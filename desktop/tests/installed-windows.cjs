@@ -12,6 +12,7 @@ const root = path.resolve(__dirname, '../..');
 const output = path.join(root, 'data/windows-e2e');
 const install = path.join(process.env.RUNNER_TEMP ?? process.env.TEMP, 'EvidenceMesh-install');
 const userData = path.join(process.env.APPDATA, 'EvidenceMesh');
+const database = path.join(userData, 'evidencemesh.sqlite3');
 const system = path.join(process.env.SystemRoot, 'System32');
 const powershell = path.join(system, 'WindowsPowerShell/v1.0/powershell.exe');
 const report = { platform: process.platform, checks: [], status: 'RUNNING' };
@@ -79,6 +80,7 @@ async function main() {
   let appLogs = '';
   let window;
   let cleanShutdown = false;
+  let databaseObserved = false;
 
   try {
     appProcess = spawn(executable, [], {
@@ -153,7 +155,8 @@ async function main() {
     assert(Object.values(dependencies.components).every((c) => c.status === 'OK'));
     assert(Object.values(dependencies.data).every((value) => value === 'OK'));
 
-    await access(path.join(userData, 'evidencemesh.sqlite3'));
+    await access(database);
+    databaseObserved = true;
 
     const runtime = JSON.parse(
       await readFile(path.join(userData, 'runtime.json'), 'utf8')
@@ -330,6 +333,9 @@ async function main() {
       } catch {
         // preserve original failure
       }
+    }
+    if (appLogs) {
+      console.error('Installed EvidenceMesh logs:\n' + appLogs);
     }
     throw error;
   } finally {
