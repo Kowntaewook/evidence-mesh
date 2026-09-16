@@ -143,10 +143,16 @@ def main():
         python_notice = Path(sys.base_prefix) / "LICENSE.txt"
         if python_notice.exists():
             shutil.copy2(python_notice, args.licenses / "Python-LICENSE.txt")
+        electron_root = ROOT / "desktop/node_modules/electron"
         for filename in ["LICENSE", "LICENSES.chromium.html"]:
-            source = ROOT / "desktop/node_modules/electron/dist" / filename
-            if not source.is_file():
-                raise ValueError(f"Electron license missing: {source}")
+            candidates = [
+                electron_root / filename,
+                electron_root / "dist" / filename,
+            ]
+            source = next((candidate for candidate in candidates if candidate.is_file()), None)
+            if source is None:
+                searched = ", ".join(str(candidate) for candidate in candidates)
+                raise ValueError(f"Electron license missing; searched: {searched}")
             shutil.copy2(source, args.licenses / ("Electron-" + filename))
     shutil.copy2(ROOT / "LICENSE", args.licenses / "EvidenceMesh-MIT.txt")
     shutil.copy2(ROOT / "docs/THIRD_PARTY_LICENSES.md", args.licenses / "README.md")
