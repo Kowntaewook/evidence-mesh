@@ -11,7 +11,11 @@ const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '../..');
 const output = path.join(root, 'data/windows-e2e');
 const install = path.join(process.env.RUNNER_TEMP ?? process.env.TEMP, 'EvidenceMesh-install');
-const userData = path.join(process.env.APPDATA, 'EvidenceMesh');
+// Keep the installed-app run isolated from any EvidenceMesh profile that may
+// already exist on the runner. Electron's single-instance lock is scoped to
+// the user-data directory, so reusing the normal profile can make a perfectly
+// healthy second launch exit with code 0 before CDP starts.
+const userData = path.join(process.env.RUNNER_TEMP ?? process.env.TEMP, 'EvidenceMesh-user-data');
 const database = path.join(userData, 'evidencemesh.sqlite3');
 const system = path.join(process.env.SystemRoot, 'System32');
 const powershell = path.join(system, 'WindowsPowerShell/v1.0/powershell.exe');
@@ -63,12 +67,12 @@ async function main() {
   const restricted = {
     ...process.env,
     PATH: system,
-    ELECTRON_RUN_AS_NODE: '',
     CI: 'true',
     EVIDENCEMESH_E2E_CDP_PORT: String(cdpPort),
+    EVIDENCEMESH_USER_DATA: userData,
   };
+  delete restricted.ELECTRON_RUN_AS_NODE;
   delete restricted.EVIDENCEMESH_API;
-  delete restricted.EVIDENCEMESH_USER_DATA;
   delete restricted.EVIDENCEMESH_TSHARK;
   const absent = spawnSync(path.join(system, 'where.exe'), ['tshark'], { env: restricted, encoding: 'utf8' });
   assert.notEqual(absent.status, 0, 'System TShark must not be discoverable');
