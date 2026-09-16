@@ -38,6 +38,12 @@ jobs:
           npm ci --prefix desktop
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
+          Push-Location desktop
+          npx install-electron --no
+          $electronInstallExit = $LASTEXITCODE
+          Pop-Location
+          if ($electronInstallExit) { exit $electronInstallExit }
+
           $electronDist = "desktop\\node_modules\\electron\\dist"
           foreach ($required in @(
             "electron.exe",
