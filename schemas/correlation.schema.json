@@ -72,7 +72,7 @@
       "title": "Raw Score"
     },
     "rule_version": {
-      "default": "0.3.0",
+      "default": "0.4.0",
       "title": "Rule Version",
       "type": "string"
     }

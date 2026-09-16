@@ -354,6 +354,19 @@
           ],
           "default": null,
           "title": "File Object"
+        },
+        "file_id128": {
+          "anyOf": [
+            {
+              "pattern": "^0x[0-9a-fA-F]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "File Id128"
         }
       },
       "title": "File",
@@ -435,6 +448,72 @@
           ],
           "default": null,
           "title": "Content Type"
+        },
+        "body_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Body Sha256"
+        },
+        "body_size": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Body Size"
+        },
+        "recovered_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recovered Path"
+        },
+        "transfer_encoding": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transfer Encoding"
+        },
+        "content_encoding": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Encoding"
+        },
+        "decrypted_with_supplied_key": {
+          "default": false,
+          "title": "Decrypted With Supplied Key",
+          "type": "boolean"
         }
       },
       "title": "HTTPInfo",
@@ -588,6 +667,42 @@
           ],
           "default": null,
           "title": "Parent Reference"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        },
+        "extents": {
+          "items": {
+            "additionalProperties": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "title": "Extents",
+          "type": "array"
+        },
+        "remaining_extents": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remaining Extents"
         }
       },
       "required": [
@@ -1019,13 +1134,13 @@
           "type": "string"
         },
         "version": {
+          "default": "0.4.0",
           "title": "Version",
           "type": "string"
         }
       },
       "required": [
-        "name",
-        "version"
+        "name"
       ],
       "title": "ParserInfo",
       "type": "object"
@@ -1677,6 +1792,20 @@
           ],
           "default": null,
           "title": "Server Port"
+        },
+        "key_log_supplied": {
+          "default": false,
+          "title": "Key Log Supplied",
+          "type": "boolean"
+        },
+        "decryption": {
+          "default": "metadata_only",
+          "enum": [
+            "metadata_only",
+            "decrypted_with_supplied_key"
+          ],
+          "title": "Decryption",
+          "type": "string"
         }
       },
       "title": "TLSInfo",
