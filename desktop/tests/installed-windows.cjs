@@ -1,10 +1,11 @@
 // Execute the installed product; Python/Node/TShark on the runner PATH are not
 // available to the application under test. Node/Playwright only drive the test.
-const { _electron: electron } = require('playwright');
-const { spawnSync } = require('node:child_process');
+const { chromium } = require('playwright');
+const { spawn, spawnSync } = require('node:child_process');
 const { readFile, writeFile, mkdir, stat, access, readdir } = require('node:fs/promises');
 const { createHash } = require('node:crypto');
 const path = require('node:path');
+const net = require('node:net');
 const assert = require('node:assert/strict');
 
 const root = path.resolve(__dirname, '../..');
@@ -15,6 +16,18 @@ const system = path.join(process.env.SystemRoot, 'System32');
 const powershell = path.join(system, 'WindowsPowerShell/v1.0/powershell.exe');
 const report = { platform: process.platform, checks: [], status: 'RUNNING' };
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function freePort() {
+  const server = net.createServer();
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const address = server.address();
+  const port = address.port;
+  await new Promise((resolve) => server.close(resolve));
+  return port;
+}
 
 function command(executable, args, options = {}) {
   const result = spawnSync(executable, args, { timeout: 180000, encoding: 'utf8', ...options });
@@ -45,7 +58,14 @@ async function main() {
   await access(executable);
   pass('silent install', { installer: path.basename(installer), path: install, sha256: await digest(installer), size: (await stat(installer)).size });
   const tshark = path.join(install, 'resources/tshark/tshark.exe');
-  const restricted = { ...process.env, PATH: system, ELECTRON_RUN_AS_NODE: '' };
+  const cdpPort = await freePort();
+  const restricted = {
+    ...process.env,
+    PATH: system,
+    ELECTRON_RUN_AS_NODE: '',
+    CI: 'true',
+    EVIDENCEMESH_E2E_CDP_PORT: String(cdpPort),
+  };
   delete restricted.EVIDENCEMESH_API;
   delete restricted.EVIDENCEMESH_USER_DATA;
   delete restricted.EVIDENCEMESH_TSHARK;
@@ -54,32 +74,99 @@ async function main() {
   assert.match(command(tshark, ['--version'], { env: restricted }), /TShark.*4\.6\.8/);
   pass('bundled TShark launches with restricted PATH');
 
-  let desktop;
+  let browser;
+  let appProcess;
+  let appLogs = '';
+  let window;
+  let cleanShutdown = false;
+
   try {
-    desktop = await electron.launch({ executablePath: executable, args: [], env: restricted, timeout: 90000 });
-    const window = await desktop.firstWindow({ timeout: 90000 });
+    appProcess = spawn(executable, [], {
+      cwd: install,
+      env: restricted,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    appProcess.stdout.on('data', (chunk) => { appLogs += chunk.toString(); });
+    appProcess.stderr.on('data', (chunk) => { appLogs += chunk.toString(); });
+
+    let cdpReady = false;
+    for (let attempt = 0; attempt < 180; attempt++) {
+      if (appProcess.exitCode !== null) {
+        throw new Error(
+          `Installed EvidenceMesh exited before CDP startup: ${appProcess.exitCode}\n${appLogs}`
+        );
+      }
+      try {
+        const response = await fetch(`http://127.0.0.1:${cdpPort}/json/version`);
+        if (response.ok) {
+          cdpReady = true;
+          break;
+        }
+      } catch {
+        // bounded startup polling
+      }
+      await delay(500);
+    }
+
+    assert(cdpReady, `Installed EvidenceMesh CDP endpoint did not start\n${appLogs}`);
+
+    browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`);
+    const contexts = browser.contexts();
+    assert(contexts.length > 0, 'Installed Electron app exposed no browser context');
+
+    for (let attempt = 0; attempt < 120; attempt++) {
+      const pages = contexts[0].pages();
+      window = pages.find((page) => page.url().startsWith('file:')) ?? pages[0];
+      if (window) break;
+      if (appProcess.exitCode !== null) {
+        throw new Error(
+          `Installed EvidenceMesh exited before renderer startup: ${appProcess.exitCode}\n${appLogs}`
+        );
+      }
+      await delay(250);
+    }
+
+    assert(window, `Installed Electron renderer did not appear\n${appLogs}`);
     window.setDefaultTimeout(60000);
+
     const errors = [];
     window.on('pageerror', (error) => errors.push(String(error)));
-    const info = await desktop.evaluate(({ app }) => ({ packaged: app.isPackaged, executable: app.getPath('exe'), userData: app.getPath('userData'), version: app.getVersion() }));
-    assert(info.packaged);
-    assert.equal(info.executable.toLowerCase(), executable.toLowerCase());
-    assert.equal(info.userData.toLowerCase(), userData.toLowerCase());
-    assert.equal(info.version, version);
-    await window.waitForFunction(() => document.querySelector('#status').textContent.includes('Engine connected'));
-    const req = (method, route, body) => window.evaluate(([m, r, b]) => window.evidenceMesh.request(m, r, b), [method, route, body]);
+
+    await window.waitForFunction(
+      () => document.querySelector('#status').textContent.includes('Engine connected')
+    );
+
+    const req = (method, route, body) =>
+      window.evaluate(
+        ([m, r, b]) => window.evidenceMesh.request(m, r, b),
+        [method, route, body],
+      );
+
     const health = await req('GET', '/health');
     assert.equal(health.version, version);
+
     const dependencies = await req('GET', '/runtime/dependencies');
     assert(dependencies.backend.embedded && dependencies.tshark.embedded);
     assert.equal(dependencies.tshark.path.toLowerCase(), tshark.toLowerCase());
     assert(Object.values(dependencies.components).every((c) => c.status === 'OK'));
     assert(Object.values(dependencies.data).every((value) => value === 'OK'));
+
     await access(path.join(userData, 'evidencemesh.sqlite3'));
-    const runtime = JSON.parse(await readFile(path.join(userData, 'runtime.json'), 'utf8'));
+
+    const runtime = JSON.parse(
+      await readFile(path.join(userData, 'runtime.json'), 'utf8')
+    );
+
     assert.equal(new URL(runtime.endpoint).hostname, '127.0.0.1');
     assert.equal((await fetch(new URL('/health', runtime.endpoint))).status, 401);
-    pass('installed app, automatic backend, loopback authentication, SQLite and dependencies', info);
+
+    pass(
+      'installed app, automatic backend, loopback authentication, SQLite and dependencies',
+      { executable, userData, version },
+    );
+
     assert.equal(await window.evaluate(() => typeof window.require), 'undefined');
 
     await window.click('#load-sample');
@@ -171,31 +258,98 @@ async function main() {
 
     const invalid = path.join(root, 'data/windows-fixtures/invalid-memory.raw');
     const before = await digest(invalid);
-    await desktop.evaluate(({ dialog }, filename) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [filename] }); }, invalid);
-    let job = await window.evaluate(([caseId, context]) => window.evidenceMesh.startMemoryAnalysis(caseId, { context, rerun: false, plugins: ['windows.pslist'] }), [testCase.case_id, context]);
-    for (let attempt = 0; attempt < 120 && !['SUCCESS', 'FAILED', 'PARTIAL', 'CANCELLED'].includes(job.status); attempt++) {
+
+    let job = await req('POST', prefix + '/memory-jobs', {
+      path: invalid,
+      context,
+      rerun: false,
+      plugins: ['windows.pslist'],
+    });
+
+    for (
+      let attempt = 0;
+      attempt < 120 &&
+      !['SUCCESS', 'FAILED', 'PARTIAL', 'CANCELLED'].includes(job.status);
+      attempt++
+    ) {
       await delay(500);
       job = await req('GET', prefix + '/memory-jobs/' + job.job_id);
     }
+
     assert.equal(job.completed, 1, JSON.stringify(job));
-    assert.equal(job.plugins[0].status, 'FAILED', 'Invalid image must fail truthfully after actual bundled invocation');
+    assert.equal(
+      job.plugins[0].status,
+      'FAILED',
+      'Invalid image must fail truthfully after actual bundled invocation',
+    );
+
     assert.equal(await digest(invalid), before);
-    pass('native memory selection, actual bundled invocation and truthful invalid-image failure', { realMemoryValidation: 'NOT VALIDATED WITH REAL MEMORY IMAGE' });
+
+    pass(
+      'installed bundled memory invocation and truthful invalid-image failure',
+      { realMemoryValidation: 'NOT VALIDATED WITH REAL MEMORY IMAGE' },
+    );
     assert.equal(errors.length, 0, errors.join('\n'));
-    await desktop.close();
-    desktop = undefined;
-    for (let attempt = 0; attempt < 30 && ownedProcesses().length; attempt++) await delay(300);
-    assert.equal(ownedProcesses().length, 0, 'App/backend/worker processes remain');
+
+    try {
+      await window.close();
+    } catch {
+      // renderer may disappear while Electron is shutting down
+    }
+    window = undefined;
+
+    for (let attempt = 0; attempt < 60 && ownedProcesses().length; attempt++) {
+      await delay(500);
+    }
+
+    assert.equal(
+      ownedProcesses().length,
+      0,
+      'App/backend/worker processes remain after normal window close',
+    );
+
+    cleanShutdown = true;
+
+    try {
+      await browser.close();
+    } catch {
+      // Electron may already have closed the CDP connection
+    }
+    browser = undefined;
+
     await assert.rejects(fetch(new URL('/health', runtime.endpoint)));
     await access(path.join(userData, 'logs/backend.log'));
-    pass('clean app/backend shutdown, closed port, no orphan workers and persistent logs');
+
+    pass(
+      'clean app/backend shutdown, closed port, no orphan workers and persistent logs',
+    );
   } catch (error) {
-    if (desktop) {
-      try { await (await desktop.firstWindow()).screenshot({ path: path.join(output, 'failure.png') }); } catch { /* preserve original failure */ }
+    if (window) {
+      try {
+        await window.screenshot({ path: path.join(output, 'failure.png') });
+      } catch {
+        // preserve original failure
+      }
     }
     throw error;
   } finally {
-    await desktop?.close();
+    if (!cleanShutdown) {
+      for (const processInfo of ownedProcesses()) {
+        spawnSync(
+          path.join(system, 'taskkill.exe'),
+          ['/PID', String(processInfo.ProcessId), '/T', '/F'],
+          { encoding: 'utf8' },
+        );
+      }
+      await delay(1000);
+    }
+
+    try {
+      await browser?.close();
+    } catch {
+      // cleanup only
+    }
+
     for (const filename of ['runtime.json', 'logs/backend.log', 'logs/desktop.log']) {
       try { await writeFile(path.join(output, path.basename(filename)), await readFile(path.join(userData, filename))); } catch { /* startup may fail before logs exist */ }
     }

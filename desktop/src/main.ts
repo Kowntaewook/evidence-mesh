@@ -61,6 +61,17 @@ function createWindow(): BrowserWindow {
 
 app.setName('EvidenceMesh');
 app.setPath('userData', process.env.EVIDENCEMESH_USER_DATA ?? path.join(app.getPath('appData'), 'EvidenceMesh'));
+
+const e2eCdpPort = process.env.EVIDENCEMESH_E2E_CDP_PORT;
+if (process.env.CI === 'true' && e2eCdpPort) {
+  const port = Number(e2eCdpPort);
+  if (!Number.isInteger(port) || port < 1024 || port > 65535) {
+    throw new Error('EVIDENCEMESH_E2E_CDP_PORT must be an integer between 1024 and 65535');
+  }
+  app.commandLine.appendSwitch('remote-debugging-address', '127.0.0.1');
+  app.commandLine.appendSwitch('remote-debugging-port', String(port));
+}
+
 const singleInstance = app.requestSingleInstanceLock();
 if (!singleInstance) app.quit();
 app.on('second-instance', () => { const window = BrowserWindow.getAllWindows()[0]; if (window) { window.restore(); window.focus(); } });
