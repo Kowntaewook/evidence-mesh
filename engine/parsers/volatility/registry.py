@@ -65,7 +65,7 @@ def filename_plugin(stem: str) -> str:
 
 
 def discover_plugins(
-    executable: str | None = None, timeout: float = 30, command: list[str] | None = None
+    executable: str | None = None, timeout: float = 120, command: list[str] | None = None
 ) -> dict:
     binary = executable or shutil.which("vol") or shutil.which("volatility3")
     if not binary and (Path(sys.executable).parent / "vol").is_file():
