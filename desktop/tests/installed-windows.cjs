@@ -63,10 +63,13 @@ async function main() {
   const restricted = {
     ...process.env,
     PATH: system,
-    ELECTRON_RUN_AS_NODE: '',
     CI: 'true',
     EVIDENCEMESH_E2E_CDP_PORT: String(cdpPort),
   };
+
+  // ELECTRON_RUN_AS_NODE is presence-sensitive.
+  // It must be absent, not merely set to an empty string.
+  delete restricted.ELECTRON_RUN_AS_NODE;
   delete restricted.EVIDENCEMESH_API;
   delete restricted.EVIDENCEMESH_USER_DATA;
   delete restricted.EVIDENCEMESH_TSHARK;
