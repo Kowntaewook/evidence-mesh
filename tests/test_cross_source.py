@@ -266,7 +266,10 @@ def test_cross_source_cli_workflow(tmp_path):
             [*prefix, command, "--db", str(db), "--case-id", report["case_id"]],
             capture_output=True,
             text=True,
-            check=True,
+            check=False,
+        )
+        assert run.returncode == 0, (
+            f"{command} failed with exit code {run.returncode}\nSTDOUT:\n{run.stdout}\nSTDERR:\n{run.stderr}"
         )
         assert json.loads(run.stdout)
 
