@@ -28,7 +28,7 @@ jobs:
           python-version: "3.12"
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "22"
           cache: npm
           cache-dependency-path: desktop/package-lock.json
       - name: Install build dependencies
@@ -36,6 +36,20 @@ jobs:
           python -m pip install -r requirements.lock -r packaging/requirements-build.txt -e ".[dev]"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           npm ci --prefix desktop
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+          $electronDist = "desktop\\node_modules\\electron\\dist"
+          foreach ($required in @(
+            "electron.exe",
+            "LICENSE",
+            "LICENSES.chromium.html",
+            "version"
+          )) {
+            $candidate = Join-Path $electronDist $required
+            if (-not (Test-Path $candidate)) {
+              throw "Incomplete Electron installation: missing $required in $electronDist"
+            }
+          }
       - name: Check synchronized versions
         run: python scripts/sync_version.py --check
       - name: Acquire and verify offline TShark
