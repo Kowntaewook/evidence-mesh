@@ -1,5 +1,6 @@
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from engine.collectors.memory.extended import MemoryImportAdapter
@@ -184,6 +185,14 @@ def add_context(parser, required=True):
 
 
 def main():
+    # Windows runners/consoles may default to a legacy code page that cannot
+    # represent forensic Unicode data such as arrows or non-ASCII paths.
+    # EvidenceMesh CLI output is always UTF-8.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
+
     parser = argparse.ArgumentParser(description="EvidenceMesh forensic correlation tools")
     commands = parser.add_subparsers(dest="command", required=True)
     sample = commands.add_parser("sample", help="Run the synthetic cross-source investigation")
