@@ -1,0 +1,16 @@
+[
+  {
+    "Offset": 12288,
+    "Order": 1,
+    "PID": 4120,
+    "Start": "SERVICE_AUTO_START",
+    "State": "SERVICE_RUNNING",
+    "Type": "SERVICE_WIN32_OWN_PROCESS",
+    "Name": "ExampleService",
+    "Display": "Example Service",
+    "Binary": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "Binary (Registry)": null,
+    "Dll": null,
+    "__children": []
+  }
+]

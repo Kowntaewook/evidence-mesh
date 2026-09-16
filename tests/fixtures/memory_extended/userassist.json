@@ -1,0 +1,15 @@
+[
+  {
+    "Hive Offset": 16384,
+    "Hive Name": "\\Users\\test\\NTUSER.DAT",
+    "Path": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\UserAssist\\Example\\Count",
+    "Last Write Time": "2026-09-16T09:31:26Z",
+    "Type": "REG_BINARY",
+    "Name": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "ID": 1,
+    "Count": 2,
+    "Last Updated": "2026-09-16T09:31:25Z",
+    "Raw Data": "00 00",
+    "__children": []
+  }
+]

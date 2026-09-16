@@ -1,0 +1,12 @@
+[
+  {
+    "PID": 4120,
+    "Process": "powershell.exe",
+    "Offset": 18446603336221196579,
+    "HandleValue": 128,
+    "Type": "File",
+    "GrantedAccess": 1179785,
+    "Name": "C:\\Users\\test\\AppData\\Local\\Temp\\a.ps1",
+    "__children": []
+  }
+]

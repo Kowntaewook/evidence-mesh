@@ -1,0 +1,171 @@
+[
+  {
+    "event_id": "DISK-ZIP",
+    "timestamp": "2026-09-16T09:31:21.000Z",
+    "source": "disk",
+    "type": "file_created",
+    "hostname": "workstation-01",
+    "source_artifact": {
+      "artifact_id": "synthetic:$MFT",
+      "kind": "$MFT",
+      "path": "synthetic://sample/$MFT"
+    },
+    "parser": {
+      "name": "synthetic-fixture",
+      "version": "0.1.0"
+    },
+    "raw_reference": {
+      "artifact_id": "synthetic:$MFT",
+      "locator": "DISK-ZIP"
+    },
+    "attributes": {
+      "synthetic": true
+    },
+    "process": {
+      "pid": 2032,
+      "ppid": 800,
+      "name": "explorer.exe",
+      "path": "C:\\Windows\\explorer.exe",
+      "creation_time": "2026-09-16T09:31:20Z"
+    },
+    "file": {
+      "path": "C:\\Users\\test\\Downloads\\invoice.zip"
+    }
+  },
+  {
+    "event_id": "DISK-SCRIPT",
+    "timestamp": "2026-09-16T09:31:25.800Z",
+    "source": "disk",
+    "type": "file_created",
+    "hostname": "workstation-01",
+    "source_artifact": {
+      "artifact_id": "synthetic:$MFT",
+      "kind": "$MFT",
+      "path": "synthetic://sample/$MFT"
+    },
+    "parser": {
+      "name": "synthetic-fixture",
+      "version": "0.1.0"
+    },
+    "raw_reference": {
+      "artifact_id": "synthetic:$MFT",
+      "locator": "DISK-SCRIPT"
+    },
+    "attributes": {
+      "synthetic": true
+    },
+    "file": {
+      "path": "C:\\Users\\test\\AppData\\Local\\Temp\\a.ps1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  },
+  {
+    "event_id": "DISK-USN",
+    "timestamp": "2026-09-16T09:31:26.000Z",
+    "source": "disk",
+    "type": "file_modified",
+    "hostname": "workstation-01",
+    "source_artifact": {
+      "artifact_id": "synthetic:$UsnJrnl",
+      "kind": "$UsnJrnl",
+      "path": "synthetic://sample/$UsnJrnl"
+    },
+    "parser": {
+      "name": "synthetic-fixture",
+      "version": "0.1.0"
+    },
+    "raw_reference": {
+      "artifact_id": "synthetic:$UsnJrnl",
+      "locator": "DISK-USN"
+    },
+    "attributes": {
+      "synthetic": true
+    },
+    "file": {
+      "path": "C:\\Users\\test\\AppData\\Local\\Temp\\a.ps1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  },
+  {
+    "event_id": "DISK-PREFETCH",
+    "timestamp": "2026-09-16T09:31:27.000Z",
+    "source": "disk",
+    "type": "prefetch",
+    "hostname": "workstation-01",
+    "source_artifact": {
+      "artifact_id": "synthetic:Prefetch",
+      "kind": "Prefetch",
+      "path": "synthetic://sample/Prefetch"
+    },
+    "parser": {
+      "name": "synthetic-fixture",
+      "version": "0.1.0"
+    },
+    "raw_reference": {
+      "artifact_id": "synthetic:Prefetch",
+      "locator": "DISK-PREFETCH"
+    },
+    "attributes": {
+      "synthetic": true
+    },
+    "file": {
+      "path": "C:\\Windows\\Prefetch\\POWERSHELL.EXE-12345678.pf",
+      "references": [
+        "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "C:\\Users\\test\\AppData\\Local\\Temp\\a.ps1"
+      ]
+    }
+  },
+  {
+    "event_id": "NOISE-DISK",
+    "timestamp": "2026-09-16T09:31:25.700Z",
+    "source": "disk",
+    "type": "file_modified",
+    "hostname": "workstation-01",
+    "source_artifact": {
+      "artifact_id": "synthetic:$MFT",
+      "kind": "$MFT",
+      "path": "synthetic://sample/$MFT"
+    },
+    "parser": {
+      "name": "synthetic-fixture",
+      "version": "0.1.0"
+    },
+    "raw_reference": {
+      "artifact_id": "synthetic:$MFT",
+      "locator": "NOISE-DISK"
+    },
+    "attributes": {
+      "synthetic": true
+    },
+    "file": {
+      "path": "C:\\Temp\\notes.txt"
+    }
+  },
+  {
+    "event_id": "NOISE-BASENAME",
+    "timestamp": "2026-09-16T09:31:25.800Z",
+    "source": "disk",
+    "type": "file_created",
+    "hostname": "workstation-01",
+    "source_artifact": {
+      "artifact_id": "synthetic:$MFT",
+      "kind": "$MFT",
+      "path": "synthetic://sample/$MFT"
+    },
+    "parser": {
+      "name": "synthetic-fixture",
+      "version": "0.1.0"
+    },
+    "raw_reference": {
+      "artifact_id": "synthetic:$MFT",
+      "locator": "NOISE-BASENAME"
+    },
+    "attributes": {
+      "synthetic": true
+    },
+    "file": {
+      "path": "D:\\Unrelated\\a.ps1"
+    }
+  }
+]

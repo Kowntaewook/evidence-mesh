@@ -1,0 +1,21 @@
+[
+  {
+    "EntryNumber": 42,
+    "SequenceNumber": 3,
+    "ParentEntryNumber": 5,
+    "ParentSequenceNumber": 1,
+    "FileName": "a.ps1",
+    "ParentPath": "C:\\Users\\test\\AppData\\Local\\Temp",
+    "InUse": "True",
+    "FileSize": 128,
+    "SiFlags": "Archive",
+    "Created0x10": "2026-09-16T09:31:25.800000Z",
+    "LastModified0x10": "2026-09-16T09:31:26Z",
+    "LastRecordChange0x10": "2026-09-16T09:31:25.800000Z",
+    "LastAccess0x10": "2026-09-16T09:31:25.800000Z",
+    "Created0x30": "2026-09-16T09:31:25.800000Z",
+    "LastModified0x30": "2026-09-16T09:31:25.800000Z",
+    "SourceOffset": 43008,
+    "SHA256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+]

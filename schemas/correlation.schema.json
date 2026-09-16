@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Reason": {
+      "additionalProperties": false,
+      "properties": {
+        "rule": {
+          "title": "Rule",
+          "type": "string"
+        },
+        "score": {
+          "maximum": 100,
+          "minimum": -100,
+          "title": "Score",
+          "type": "integer"
+        },
+        "details": {
+          "title": "Details",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "rule",
+        "score",
+        "details"
+      ],
+      "title": "Reason",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "source_event": {
+      "title": "Source Event",
+      "type": "string"
+    },
+    "target_event": {
+      "title": "Target Event",
+      "type": "string"
+    },
+    "score": {
+      "maximum": 100,
+      "minimum": 0,
+      "title": "Score",
+      "type": "integer"
+    },
+    "reasons": {
+      "items": {
+        "$ref": "#/$defs/Reason"
+      },
+      "minItems": 1,
+      "title": "Reasons",
+      "type": "array"
+    },
+    "raw_score": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Raw Score"
+    },
+    "rule_version": {
+      "default": "0.3.0",
+      "title": "Rule Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_event",
+    "target_event",
+    "score",
+    "reasons"
+  ],
+  "title": "Correlation",
+  "type": "object"
+}

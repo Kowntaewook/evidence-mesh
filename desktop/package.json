@@ -1,0 +1,23 @@
+{
+  "name": "evidence-mesh-desktop",
+  "productName": "EvidenceMesh",
+  "version": "0.3.0",
+  "description": "Cross-source forensic correlation engine for memory, disk, and network evidence.",
+  "private": true,
+  "license": "MIT",
+  "main": "dist/main.js",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc && node scripts/copy-assets.cjs",
+    "start": "npm run build && electron .",
+    "package": "npm run build && electron-packager . EvidenceMesh --out=release --overwrite --asar --ignore='^/(src|scripts|release|tests|test-results|tsconfig.json)'",
+    "test:e2e": "npm run build && node tests/smoke.cjs"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "@types/node": "^24.0.0",
+    "electron": "44.4.1",
+    "playwright": "^1.56.0",
+    "typescript": "7.0.2"
+  }
+}

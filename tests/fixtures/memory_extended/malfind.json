@@ -1,0 +1,16 @@
+[
+  {
+    "PID": 4120,
+    "Process": "powershell.exe",
+    "Start VPN": 6291456,
+    "End VPN": 6356991,
+    "Protection": "PAGE_EXECUTE_READWRITE",
+    "Tag": "VadS",
+    "CommitCharge": 16,
+    "PrivateMemory": 1,
+    "Hexdump": "00 00 00 00",
+    "Disasm": "00 00  synthetic preview",
+    "Notes": "Synthetic observation; no executable payload",
+    "__children": []
+  }
+]

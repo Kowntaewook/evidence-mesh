@@ -1,0 +1,6 @@
+include README.md LICENSE requirements.lock
+recursive-include docs *.md
+recursive-include samples *.json *.md *.pcap *.pcapng *.txt *.ps1
+recursive-include schemas *.json
+recursive-include tests *.py *.json *.md *.csv *.bin *.pf *.xml *.txt *.pcap *.pcapng
+recursive-include scripts *.py

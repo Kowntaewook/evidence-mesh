@@ -1,0 +1,44 @@
+[
+  {
+    "PID": 2032,
+    "PPID": 800,
+    "ImageFileName": "explorer.exe",
+    "Offset(V)": 4096,
+    "Threads": 32,
+    "Handles": 520,
+    "SessionId": 1,
+    "Wow64": false,
+    "CreateTime": "2026-09-16T09:31:20+00:00",
+    "ExitTime": null,
+    "File output": "Disabled",
+    "__children": []
+  },
+  {
+    "PID": 3300,
+    "PPID": 2032,
+    "ImageFileName": "WINWORD.EXE",
+    "Offset(V)": 8192,
+    "Threads": 12,
+    "Handles": 300,
+    "SessionId": 1,
+    "Wow64": false,
+    "CreateTime": "2026-09-16T09:31:22+00:00",
+    "ExitTime": null,
+    "File output": "Disabled",
+    "__children": []
+  },
+  {
+    "PID": 4120,
+    "PPID": 3300,
+    "ImageFileName": "powershell.exe",
+    "Offset(V)": 12288,
+    "Threads": 8,
+    "Handles": 210,
+    "SessionId": 1,
+    "Wow64": false,
+    "CreateTime": "2026-09-16T09:31:25+00:00",
+    "ExitTime": null,
+    "File output": "Disabled",
+    "__children": []
+  }
+]

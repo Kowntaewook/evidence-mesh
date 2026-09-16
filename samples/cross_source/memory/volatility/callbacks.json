@@ -1,0 +1,10 @@
+[
+  {
+    "Type": "PsSetCreateProcessNotifyRoutine",
+    "Callback": 18446735277616529440,
+    "Module": "example.sys",
+    "Symbol": "ExampleCallback",
+    "Detail": "Synthetic callback observation",
+    "__children": []
+  }
+]

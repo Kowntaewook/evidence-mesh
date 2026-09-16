@@ -1,0 +1,2 @@
+EventId,Provider,TimeCreated,Channel,Computer,RecordId,ProcessId,ParentProcessId,Image,CommandLine,User
+1,Microsoft-Windows-Sysmon,2026-09-16T09:31:25Z,Microsoft-Windows-Sysmon/Operational,workstation-01,123,4120,3300,C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe,powershell.exe -File C:\Users\test\AppData\Local\Temp\a.ps1,test

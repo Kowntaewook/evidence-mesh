@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'">
+  <title>EvidenceMesh — Forensic Workstation</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <button id="brand" class="brand" aria-label="EvidenceMesh case overview"><span class="brand-mark">//</span>Evidence<span>Mesh</span></button>
+      <div class="case-context"><label for="case-select">CASE</label><select id="case-select"><option value="">Select a case</option></select></div>
+      <div class="top-tools"><span class="mono muted">UTC</span><span class="divider"></span><span id="connection-state" class="connection"><i></i>CONNECTING</span><span class="version">0.3</span></div>
+    </header>
+    <nav id="rail" class="rail" aria-label="Primary navigation"></nav>
+    <aside class="sidebar">
+      <div class="sidebar-heading"><span class="eyebrow">INVESTIGATION</span><h2 id="case-title">No case selected</h2><span id="case-id" class="mono muted small">Local analysis workspace</span></div>
+      <div id="navigation" class="navigation"></div>
+      <div id="root-summary" class="root-summary"><span class="eyebrow">SELECTED PROCESS</span><p class="muted">Select a process to trace its evidence.</p></div>
+      <div class="sidebar-footer"><span>◈</span><div>Original evidence preserved<br><small>DETERMINISTIC CORRELATION</small></div></div>
+    </aside>
+    <main class="workspace">
+      <header class="workspace-header"><div><div id="breadcrumb" class="breadcrumb">EvidenceMesh / Investigation</div><h1 id="view-title">Case overview</h1></div><div class="workspace-actions"><button id="refresh">↻ Refresh</button><button id="analyze" class="primary" disabled>▶ Analyze Evidence</button></div></header>
+      <div class="actionbar"><div class="scope"><span id="view-context">No evidence loaded</span><span id="view-count" class="badge neutral">0 events</span></div><label class="search-label"><span>⌕</span><input id="search" type="search" placeholder="Filter current view…" aria-label="Filter current view"></label><button id="import-events" disabled>＋ Import JSON</button><button id="load-sample">Load Sample Evidence</button></div>
+      <nav id="workspace-tabs" class="workspace-tabs" aria-label="Workspace views"></nav>
+      <div id="workspace-content" class="workspace-content"></div>
+      <div class="resultbar"><span id="result-summary">Ready</span><span class="muted">Rule-based score · not a probability</span></div>
+    </main>
+    <section id="inspector" class="inspector" aria-label="Evidence inspector">
+      <header><div><span id="inspector-kind" class="eyebrow">EVIDENCE INSPECTOR</span><h2 id="inspector-title">Select an event or a connection</h2></div><nav id="inspector-tabs" aria-label="Inspector sections"></nav></header>
+      <div id="inspector-content" class="inspector-content"></div>
+    </section>
+    <footer class="statusbar"><div id="status" role="status" aria-live="polite">Connecting to local analysis engine…</div><span id="status-counts" class="mono">MEMORY — · DISK — · NETWORK —</span></footer>
+  </div>
+  <script src="ui.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

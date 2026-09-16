@@ -1,0 +1,28 @@
+[
+  {
+    "Offset": 16384,
+    "Proto": "TCPv4",
+    "LocalAddr": "10.0.0.5",
+    "LocalPort": 51231,
+    "ForeignAddr": "203.0.113.20",
+    "ForeignPort": 443,
+    "State": "ESTABLISHED",
+    "PID": 4120,
+    "Owner": "powershell.exe",
+    "Created": "2026-09-16T09:31:26.301Z",
+    "__children": []
+  },
+  {
+    "Offset": 20480,
+    "Proto": "UDPv6",
+    "LocalAddr": "::",
+    "LocalPort": 5353,
+    "ForeignAddr": "*",
+    "ForeignPort": 0,
+    "State": "",
+    "PID": 2032,
+    "Owner": "explorer.exe",
+    "Created": null,
+    "__children": []
+  }
+]

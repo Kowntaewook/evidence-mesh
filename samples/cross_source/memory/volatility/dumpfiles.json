@@ -1,0 +1,11 @@
+[
+  {
+    "Cache": "DataSectionObject",
+    "FileObject": 18446603336221196579,
+    "FileName": "C:\\Users\\test\\AppData\\Local\\Temp\\a.ps1",
+    "Result": "recovered.txt",
+    "PID": 4120,
+    "Process": "powershell.exe",
+    "__children": []
+  }
+]

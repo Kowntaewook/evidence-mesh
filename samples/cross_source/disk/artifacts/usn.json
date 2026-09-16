@@ -1,0 +1,14 @@
+[
+  {
+    "Name": "a.ps1",
+    "EntryNumber": 42,
+    "SequenceNumber": 3,
+    "ParentEntryNumber": 5,
+    "ParentSequenceNumber": 1,
+    "UpdateSequenceNumber": 91821,
+    "UpdateTimestamp": "2026-09-16T09:31:26Z",
+    "UpdateReasons": "FILE_CREATE|DATA_EXTEND|CLOSE",
+    "SourceInfo": 0,
+    "OffsetToData": 1024
+  }
+]

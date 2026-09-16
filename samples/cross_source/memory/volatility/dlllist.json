@@ -1,0 +1,38 @@
+[
+  {
+    "PID": 4120,
+    "Process": "powershell.exe",
+    "Base": 140703128616960,
+    "Size": 1019904,
+    "Name": "kernel32.dll",
+    "Path": "C:\\Windows\\System32\\kernel32.dll",
+    "LoadCount": -1,
+    "LoadTime": "2026-09-16T09:31:25.500000+00:00",
+    "File output": "Disabled",
+    "__children": []
+  },
+  {
+    "PID": 4120,
+    "Process": "powershell.exe",
+    "Base": 140703140347904,
+    "Size": 3014656,
+    "Name": "KernelBase.dll",
+    "Path": "C:\\Windows\\System32\\KernelBase.dll",
+    "LoadCount": -1,
+    "LoadTime": null,
+    "File output": "Disabled",
+    "__children": []
+  },
+  {
+    "PID": 3300,
+    "Process": "WINWORD.EXE",
+    "Base": 140703170347904,
+    "Size": 1019904,
+    "Name": "kernel32.dll",
+    "Path": "C:\\Windows\\System32\\kernel32.dll",
+    "LoadCount": -1,
+    "LoadTime": "2026-09-16T09:31:22.500000+00:00",
+    "File output": "Disabled",
+    "__children": []
+  }
+]

@@ -1,0 +1,10 @@
+[
+  {
+    "Offset": 32768,
+    "Base": 18446735277616529408,
+    "Size": 65536,
+    "Name": "example.sys",
+    "Path": "\\SystemRoot\\System32\\drivers\\example.sys",
+    "__children": []
+  }
+]

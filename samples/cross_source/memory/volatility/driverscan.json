@@ -1,0 +1,11 @@
+[
+  {
+    "Offset": 36864,
+    "Start": 18446735277616529408,
+    "Size": 65536,
+    "Service Key": "\\Registry\\Machine\\System\\CurrentControlSet\\Services\\Example",
+    "Driver Name": "example",
+    "Name": "\\Driver\\Example",
+    "__children": []
+  }
+]

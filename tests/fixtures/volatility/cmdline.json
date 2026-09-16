@@ -1,0 +1,20 @@
+[
+  {
+    "PID": 2032,
+    "Process": "explorer.exe",
+    "Args": "explorer.exe",
+    "__children": []
+  },
+  {
+    "PID": 3300,
+    "Process": "WINWORD.EXE",
+    "Args": "WINWORD.EXE invoice.docx",
+    "__children": []
+  },
+  {
+    "PID": 4120,
+    "Process": "powershell.exe",
+    "Args": "powershell.exe -File \"C:\\Users\\test\\AppData\\Local\\Temp\\a.ps1\"",
+    "__children": []
+  }
+]

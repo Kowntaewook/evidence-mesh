@@ -1,0 +1,15 @@
+[
+  {
+    "PID": 4120,
+    "Process": "powershell.exe",
+    "Offset": 8192,
+    "Start VPN": 4194304,
+    "End VPN": 4259839,
+    "Protection": "PAGE_EXECUTE_READ",
+    "Tag": "VadS",
+    "CommitCharge": 16,
+    "PrivateMemory": 0,
+    "File": "C:\\Windows\\System32\\kernel32.dll",
+    "__children": []
+  }
+]

@@ -1,0 +1,16 @@
+[
+  {
+    "SourceFilename": "C:\\Windows\\Prefetch\\POWERSHELL.EXE-12345678.pf",
+    "ExecutableName": "POWERSHELL.EXE",
+    "ExecutablePath": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "Hash": "12345678",
+    "RunCount": 3,
+    "LastRun": "2026-09-16T09:31:27Z",
+    "PreviousRun0": "2026-09-15T12:00:00Z",
+    "FilesLoaded": "C:\\Users\\test\\AppData\\Local\\Temp\\a.ps1|C:\\Windows\\System32\\kernel32.dll",
+    "Directories": "C:\\Users\\test\\AppData\\Local\\Temp",
+    "Volume0Name": "\\Device\\HarddiskVolume3",
+    "Volume0Serial": "AABBCCDD",
+    "Volume0Created": "2026-01-01T00:00:00Z"
+  }
+]

@@ -1,0 +1,15 @@
+[
+  {
+    "EventId": 1,
+    "Provider": "Microsoft-Windows-Sysmon",
+    "TimeCreated": "2026-09-16T09:31:25Z",
+    "Channel": "Microsoft-Windows-Sysmon/Operational",
+    "Computer": "workstation-01",
+    "RecordId": 123,
+    "ProcessId": 4120,
+    "ParentProcessId": 3300,
+    "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "CommandLine": "powershell.exe -File C:\\Users\\test\\AppData\\Local\\Temp\\a.ps1",
+    "User": "test"
+  }
+]

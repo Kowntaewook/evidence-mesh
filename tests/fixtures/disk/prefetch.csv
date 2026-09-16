@@ -1,0 +1,2 @@
+SourceFilename,ExecutableName,ExecutablePath,Hash,RunCount,LastRun,PreviousRun0,FilesLoaded,Directories,Volume0Name,Volume0Serial,Volume0Created
+C:\Windows\Prefetch\POWERSHELL.EXE-12345678.pf,POWERSHELL.EXE,C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe,12345678,3,2026-09-16T09:31:27Z,2026-09-15T12:00:00Z,C:\Users\test\AppData\Local\Temp\a.ps1|C:\Windows\System32\kernel32.dll,C:\Users\test\AppData\Local\Temp,\Device\HarddiskVolume3,AABBCCDD,2026-01-01T00:00:00Z

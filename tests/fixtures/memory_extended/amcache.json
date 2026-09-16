@@ -1,0 +1,14 @@
+[
+  {
+    "EntryType": "InventoryApplicationFile",
+    "Path": "C:\\Users\\test\\AppData\\Local\\Temp\\a.ps1",
+    "Company": "Example",
+    "LastModifyTime": "2026-09-16T09:31:25.8Z",
+    "LastModifyTime2": null,
+    "InstallTime": null,
+    "CompileTime": null,
+    "SHA1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "ProductName": "Synthetic",
+    "__children": []
+  }
+]

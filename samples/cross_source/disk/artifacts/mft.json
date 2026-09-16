@@ -1,0 +1,129 @@
+[
+  {
+    "EntryNumber": 42,
+    "SequenceNumber": 3,
+    "ParentEntryNumber": 5,
+    "ParentSequenceNumber": 1,
+    "FileName": "a.ps1",
+    "ParentPath": "C:\\Users\\test\\AppData\\Local\\Temp",
+    "InUse": "True",
+    "FileSize": 55,
+    "SiFlags": "Archive",
+    "Created0x10": "2026-09-16T09:31:25.800000Z",
+    "LastModified0x10": "2026-09-16T09:31:26Z",
+    "LastRecordChange0x10": "2026-09-16T09:31:25.800000Z",
+    "LastAccess0x10": "2026-09-16T09:31:25.800000Z",
+    "Created0x30": "2026-09-16T09:31:25.800000Z",
+    "LastModified0x30": "2026-09-16T09:31:25.800000Z",
+    "SourceOffset": 43008,
+    "SHA256": "16ff4e70eb1f7969c02231c8e8c1451f6b446e2dd2b5ed85fdceddd997ef185d"
+  },
+  {
+    "EntryNumber": 200,
+    "SequenceNumber": 1,
+    "FileName": "a.ps1",
+    "FullPath": "D:\\Other\\0\\a.ps1",
+    "InUse": true,
+    "Created0x10": "2026-09-16T09:31:26Z",
+    "FixtureRole": "noise"
+  },
+  {
+    "EntryNumber": 201,
+    "SequenceNumber": 1,
+    "FileName": "a.ps1",
+    "FullPath": "D:\\Other\\1\\a.ps1",
+    "InUse": true,
+    "Created0x10": "2026-09-16T09:31:26Z",
+    "FixtureRole": "noise"
+  },
+  {
+    "EntryNumber": 202,
+    "SequenceNumber": 1,
+    "FileName": "a.ps1",
+    "FullPath": "D:\\Other\\2\\a.ps1",
+    "InUse": true,
+    "Created0x10": "2026-09-16T09:31:26Z",
+    "FixtureRole": "noise"
+  },
+  {
+    "EntryNumber": 203,
+    "SequenceNumber": 1,
+    "FileName": "a.ps1",
+    "FullPath": "D:\\Other\\3\\a.ps1",
+    "InUse": true,
+    "Created0x10": "2026-09-16T09:31:26Z",
+    "FixtureRole": "noise"
+  },
+  {
+    "EntryNumber": 204,
+    "SequenceNumber": 1,
+    "FileName": "a.ps1",
+    "FullPath": "D:\\Other\\4\\a.ps1",
+    "InUse": true,
+    "Created0x10": "2026-09-16T09:31:26Z",
+    "FixtureRole": "noise"
+  },
+  {
+    "EntryNumber": 205,
+    "SequenceNumber": 1,
+    "FileName": "a.ps1",
+    "FullPath": "D:\\Other\\5\\a.ps1",
+    "InUse": true,
+    "Created0x10": "2026-09-16T09:31:26Z",
+    "FixtureRole": "noise"
+  },
+  {
+    "EntryNumber": 206,
+    "SequenceNumber": 1,
+    "FileName": "a.ps1",
+    "FullPath": "D:\\Other\\6\\a.ps1",
+    "InUse": true,
+    "Created0x10": "2026-09-16T09:31:26Z",
+    "FixtureRole": "noise"
+  },
+  {
+    "EntryNumber": 207,
+    "SequenceNumber": 1,
+    "FileName": "a.ps1",
+    "FullPath": "D:\\Other\\7\\a.ps1",
+    "InUse": true,
+    "Created0x10": "2026-09-16T09:31:26Z",
+    "FixtureRole": "noise"
+  },
+  {
+    "EntryNumber": 208,
+    "SequenceNumber": 1,
+    "FileName": "a.ps1",
+    "FullPath": "D:\\Other\\8\\a.ps1",
+    "InUse": true,
+    "Created0x10": "2026-09-16T09:31:26Z",
+    "FixtureRole": "noise"
+  },
+  {
+    "EntryNumber": 209,
+    "SequenceNumber": 1,
+    "FileName": "a.ps1",
+    "FullPath": "D:\\Other\\9\\a.ps1",
+    "InUse": true,
+    "Created0x10": "2026-09-16T09:31:26Z",
+    "FixtureRole": "noise"
+  },
+  {
+    "EntryNumber": 210,
+    "SequenceNumber": 1,
+    "FileName": "a.ps1",
+    "FullPath": "D:\\Other\\10\\a.ps1",
+    "InUse": true,
+    "Created0x10": "2026-09-16T09:31:26Z",
+    "FixtureRole": "noise"
+  },
+  {
+    "EntryNumber": 211,
+    "SequenceNumber": 1,
+    "FileName": "a.ps1",
+    "FullPath": "D:\\Other\\11\\a.ps1",
+    "InUse": true,
+    "Created0x10": "2026-09-16T09:31:26Z",
+    "FixtureRole": "noise"
+  }
+]

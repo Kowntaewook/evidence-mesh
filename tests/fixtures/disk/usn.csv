@@ -1,0 +1,2 @@
+Name,EntryNumber,SequenceNumber,ParentEntryNumber,ParentSequenceNumber,UpdateSequenceNumber,UpdateTimestamp,UpdateReasons,SourceInfo,OffsetToData
+a.ps1,42,3,5,1,91821,2026-09-16T09:31:26Z,FILE_CREATE|DATA_EXTEND|CLOSE,0,1024

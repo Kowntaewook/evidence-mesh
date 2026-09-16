@@ -1,0 +1,10 @@
+[
+  {
+    "PID": 4120,
+    "Process": "powershell.exe",
+    "Block": "0x1000",
+    "Variable": "TEMP",
+    "Value": "C:\\Users\\test\\AppData\\Local\\Temp",
+    "__children": []
+  }
+]

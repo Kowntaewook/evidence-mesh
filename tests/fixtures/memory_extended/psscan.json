@@ -1,0 +1,11 @@
+[
+  {
+    "PID": 4120,
+    "PPID": 3300,
+    "ImageFileName": "powershell.exe",
+    "CreateTime": "2026-09-16T09:31:25Z",
+    "ExitTime": null,
+    "Offset(P)": 4096,
+    "__children": []
+  }
+]

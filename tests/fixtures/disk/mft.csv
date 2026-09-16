@@ -1,0 +1,2 @@
+EntryNumber,SequenceNumber,ParentEntryNumber,ParentSequenceNumber,FileName,ParentPath,InUse,FileSize,SiFlags,Created0x10,LastModified0x10,LastRecordChange0x10,LastAccess0x10,Created0x30,LastModified0x30,SourceOffset,SHA256
+42,3,5,1,a.ps1,C:\Users\test\AppData\Local\Temp,True,128,Archive,2026-09-16T09:31:25.800000Z,2026-09-16T09:31:26Z,2026-09-16T09:31:25.800000Z,2026-09-16T09:31:25.800000Z,2026-09-16T09:31:25.800000Z,2026-09-16T09:31:25.800000Z,43008,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

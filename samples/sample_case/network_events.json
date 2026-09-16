@@ -1,0 +1,126 @@
+[
+  {
+    "event_id": "NET-DNS",
+    "timestamp": "2026-09-16T09:31:28.100Z",
+    "source": "network",
+    "type": "dns_query",
+    "hostname": "workstation-01",
+    "source_artifact": {
+      "artifact_id": "synthetic:PCAP",
+      "kind": "PCAP",
+      "path": "synthetic://sample/PCAP"
+    },
+    "parser": {
+      "name": "synthetic-fixture",
+      "version": "0.1.0"
+    },
+    "raw_reference": {
+      "artifact_id": "synthetic:PCAP",
+      "locator": "NET-DNS"
+    },
+    "attributes": {
+      "synthetic": true
+    },
+    "network": {
+      "src_ip": "192.168.0.15",
+      "dst_ip": "192.168.0.1",
+      "src_port": 51000,
+      "dst_port": 53,
+      "protocol": "UDP",
+      "dns_query": "evil.example",
+      "resolved_ips": [
+        "185.10.10.5"
+      ]
+    }
+  },
+  {
+    "event_id": "NET-TLS",
+    "timestamp": "2026-09-16T09:31:29.500Z",
+    "source": "network",
+    "type": "network_connection",
+    "hostname": "workstation-01",
+    "source_artifact": {
+      "artifact_id": "synthetic:PCAP",
+      "kind": "PCAP",
+      "path": "synthetic://sample/PCAP"
+    },
+    "parser": {
+      "name": "synthetic-fixture",
+      "version": "0.1.0"
+    },
+    "raw_reference": {
+      "artifact_id": "synthetic:PCAP",
+      "locator": "NET-TLS"
+    },
+    "attributes": {
+      "synthetic": true
+    },
+    "network": {
+      "src_ip": "192.168.0.15",
+      "src_port": 50321,
+      "dst_ip": "185.10.10.5",
+      "dst_port": 443,
+      "protocol": "TCP"
+    }
+  },
+  {
+    "event_id": "NOISE-NET",
+    "timestamp": "2026-09-16T09:31:29.510Z",
+    "source": "network",
+    "type": "network_connection",
+    "hostname": "workstation-01",
+    "source_artifact": {
+      "artifact_id": "synthetic:PCAP",
+      "kind": "PCAP",
+      "path": "synthetic://sample/PCAP"
+    },
+    "parser": {
+      "name": "synthetic-fixture",
+      "version": "0.1.0"
+    },
+    "raw_reference": {
+      "artifact_id": "synthetic:PCAP",
+      "locator": "NOISE-NET"
+    },
+    "attributes": {
+      "synthetic": true
+    },
+    "network": {
+      "src_ip": "192.168.0.15",
+      "src_port": 62000,
+      "dst_ip": "203.0.113.10",
+      "dst_port": 443,
+      "protocol": "TCP"
+    }
+  },
+  {
+    "event_id": "NOISE-PORT",
+    "timestamp": "2026-09-16T09:31:29.510Z",
+    "source": "network",
+    "type": "network_connection",
+    "hostname": "workstation-02",
+    "source_artifact": {
+      "artifact_id": "synthetic:PCAP",
+      "kind": "PCAP",
+      "path": "synthetic://sample/PCAP"
+    },
+    "parser": {
+      "name": "synthetic-fixture",
+      "version": "0.1.0"
+    },
+    "raw_reference": {
+      "artifact_id": "synthetic:PCAP",
+      "locator": "NOISE-PORT"
+    },
+    "attributes": {
+      "synthetic": true
+    },
+    "network": {
+      "src_ip": "192.168.0.16",
+      "src_port": 50321,
+      "dst_ip": "185.10.10.5",
+      "dst_port": 8443,
+      "protocol": "TCP"
+    }
+  }
+]
