@@ -2,12 +2,14 @@ import hashlib
 import json
 from pathlib import Path
 
+from engine.version import VERSION
+
 
 class JsonEventParser:
     """Read-only adapter for JSON event arrays, with content-based provenance."""
 
     name = "evidencemesh-json"
-    version = "0.1.0"
+    version = VERSION
 
     def parse(self, artifact: Path) -> list[dict]:
         payload = artifact.read_bytes()

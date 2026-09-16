@@ -25,6 +25,34 @@ let analysis: EvidenceAnalysis | undefined, incidentEvents: EvidenceEvent[] = []
 let view: View = 'case', inspectorTab = 'Overview', graphMode = 'events', onlyIncident = true, busy = false;
 let parserRuns: EvidenceRun[] = [], timelineSource = '', timelineCategory = '', processTab = 'Overview';
 let savedImportContext: Record<string, string> = {};
+type EventPage = { events: EvidenceEvent[]; total: number; offset: number; limit: number;
+  counts: Record<string, number> & { sources: Record<string, number> }; revision: number };
+let eventPage: EventPage | undefined;
+let pageSearchTimer: ReturnType<typeof setTimeout> | undefined;
+let graphDepth = 2, graphLimit = 500, graphScore = 0, graphTypes = '';
+const largeCase = (): boolean => (currentCase?.event_count ?? 0) > 2000;
+const pagedRoute = (route: View): boolean => largeCase() && !['case', 'graph', 'correlations', 'parser-runs'].includes(route)
+  && !(route === 'timeline' && onlyIncident && !!analysis);
+const sourceCount = (source: string): number => largeCase() ? eventPage?.counts.sources[source] ?? 0 : events.filter((event) => event.source === source).length;
+
+async function loadEventPage(route: View, offset = 0): Promise<void> {
+  if (!currentCase) return;
+  const id = currentCase.case_id;
+  const parameters = new URLSearchParams({ view: route, limit: '100', offset: String(offset), query: element<HTMLInputElement>('search').value.trim() });
+  if (route === 'timeline') {
+    if (timelineSource) parameters.set('source', timelineSource);
+    if (timelineCategory) parameters.set('category', timelineCategory);
+  }
+  const result = await api<EventPage>('GET', `/cases/${id}/event-page?${parameters}`);
+  if (currentCase?.case_id !== id) return;
+  eventPage = result; events = result.events;
+}
+function refreshPagedView(offset = 0): void {
+  if (pageSearchTimer) clearTimeout(pageSearchTimer);
+  if (busy) { pageSearchTimer = setTimeout(() => refreshPagedView(offset), 200); return; }
+  if (!pagedRoute(view)) { renderWorkspace(); return; }
+  void action(async () => { await loadEventPage(view, offset); renderNavigation(); renderWorkspace(); });
+}
 
 function setStatus(message: string, error = false): void { element('status').textContent = message; element('status').classList.toggle('error', error); }
 function controls(): void {
@@ -33,6 +61,13 @@ function controls(): void {
   element<HTMLButtonElement>('analyze').disabled = busy || !root;
   element<HTMLButtonElement>('import-events').disabled = busy || !currentCase;
   for (const kind of ['memory', 'disk', 'network']) { const button = document.getElementById(`import-${kind}`) as HTMLButtonElement | null; if (button) button.disabled = busy || !currentCase; }
+  for (const id of ['analyze-memory-image', 'inspect-disk-image']) {
+    const button = document.getElementById(id) as HTMLButtonElement | null; if (button) button.disabled = busy || !currentCase;
+  }
+  const previousPage = document.getElementById('previous-event-page') as HTMLButtonElement | null;
+  const nextPage = document.getElementById('next-event-page') as HTMLButtonElement | null;
+  if (previousPage) previousPage.disabled = busy || !eventPage || eventPage.offset === 0;
+  if (nextPage) nextPage.disabled = busy || !eventPage || eventPage.offset + 100 >= eventPage.total;
   const create = document.getElementById('create-case') as HTMLButtonElement | null; if (create) create.disabled = busy;
   element('workspace-content').setAttribute('aria-busy', String(busy));
 }
@@ -41,8 +76,11 @@ async function action(work: () => Promise<void>): Promise<void> {
   try { await work(); } catch (error) { setStatus(error instanceof Error ? error.message : String(error), true); }
   finally { busy = false; controls(); }
 }
-function eventById(id: string): EvidenceEvent | undefined { return events.find((item) => item.event_id === id); }
-function eventKind(event: EvidenceEvent): string {
+function eventById(id: string): EvidenceEvent | undefined { return events.find((item) => item.event_id === id)
+  ?? incidentEvents.find((item) => item.event_id === id) ?? graph?.supporting_events?.find((item) => item.event_id === id)
+  ?? (root?.event_id === id ? root : undefined); }
+function eventKind(event?: EvidenceEvent): string {
+  if (!event) return 'Event';
   if (event.service) return 'Service'; if (event.memory_region) return 'MemoryRegion'; if (event.registry) return 'RegistryArtifact';
   if (event.network?.dns_query) return 'Domain'; if (event.network) return 'IP'; if (event.file) return 'File';
   if (event.process) return 'Process'; return 'Event';
@@ -105,7 +143,11 @@ function revealInspector(): void {
   const control = document.querySelector<HTMLButtonElement>('[data-expand-graph]');
   if (control) control.textContent = 'Expand graph';
 }
-function navigate(route: View): void { if (busy) return; view = route; document.querySelector('.app-shell')?.classList.remove('inspector-collapsed'); element<HTMLInputElement>('search').value = ''; renderNavigation(); renderWorkspace(); }
+function navigate(route: View): void {
+  if (busy) return; view = route; document.querySelector('.app-shell')?.classList.remove('inspector-collapsed');
+  element<HTMLInputElement>('search').value = '';
+  if (pagedRoute(route)) refreshPagedView(); else { renderNavigation(); renderWorkspace(); }
+}
 function navButton(route: View, name: string, kind = 'Event', count?: number): HTMLButtonElement {
   const button = U.button('', () => navigate(route), route === view ? 'active' : ''); button.dataset.view = route;
   button.setAttribute('aria-current', String(route === view)); button.append(U.icon(kind, 13), U.el('span', name));
@@ -120,7 +162,7 @@ function renderNavigation(): void {
   const navigation = element('navigation');
   const openGroups = new Set([...navigation.querySelectorAll<HTMLDetailsElement>('details[open]')].map((group) => group.dataset.group));
   const first = navigation.childElementCount === 0; navigation.replaceChildren();
-  navigation.append(U.el('div', 'EVIDENCE', 'nav-section-label'), navButton('evidence', 'All evidence', 'Case', events.length));
+  navigation.append(U.el('div', 'EVIDENCE', 'nav-section-label'), navButton('evidence', 'All evidence', 'Case', currentCase?.event_count ?? events.length));
   const groups: [string, string, [View, string, string][]][] = [
     ['Memory', 'memory', [['processes', 'Processes', 'Process'], ['memory-network', 'Network', 'IP'], ['dlls', 'DLLs', 'File'], ['handles', 'Handles / Files', 'File'], ['regions', 'Memory Regions', 'Event'], ['services', 'Services', 'Process'], ['modules', 'Modules / Drivers', 'File'], ['memory-registry', 'Registry Artifacts', 'Registry']]],
     ['Disk', 'disk', [['files', 'Files', 'File'], ['mft', 'MFT', 'File'], ['usn', 'USN', 'File'], ['prefetch', 'Prefetch', 'Event'], ['event-logs', 'Event Logs', 'Event'], ['amcache', 'Amcache', 'Registry']]],
@@ -128,10 +170,10 @@ function renderNavigation(): void {
   ];
   for (const [name, source, children] of groups) {
     const group = U.el('details'); group.dataset.group = source; group.open = first || openGroups.has(source);
-    const count = events.filter((event) => event.source === source).length;
+    const count = sourceCount(source);
     const summary = U.el('summary', name); summary.append(U.badge(count ? `${count} LOADED` : 'EMPTY', count ? 'success' : 'neutral'));
     const container = U.el('div', '', 'nav-children');
-    for (const [route, title, kind] of children) container.append(navButton(route, title, kind, visibleEvents(route).length));
+    for (const [route, title, kind] of children) container.append(navButton(route, title, kind, largeCase() ? eventPage?.counts[route] ?? 0 : visibleEvents(route).length));
     group.append(summary, container); navigation.append(group);
   }
   navigation.append(U.el('div', 'INVESTIGATION', 'nav-section-label'), navButton('correlations', 'Correlations', 'Graph', analysis?.correlation_count),
@@ -164,21 +206,16 @@ async function refreshCases(): Promise<void> {
   for (const item of cases) select.add(new Option(`${item.name} (${item.event_count})`, item.case_id)); select.value = currentCase?.case_id ?? '';
 }
 async function openCase(id: string): Promise<void> {
-  async function loadEvents(): Promise<EvidenceEvent[]> {
-    const collected: EvidenceEvent[] = [];
-    for (let offset = 0; ; offset += 2000) {
-      const batch = await api<EvidenceEvent[]>('GET', `/cases/${id}/events?limit=2000&offset=${offset}`);
-      collected.push(...batch); if (batch.length < 2000) break;
-      setStatus(`Loading evidence… ${collected.length} events`);
-    }
-    return collected;
-  }
-  [currentCase, events, parserRuns] = await Promise.all([api<EvidenceCase>('GET', `/cases/${id}`), loadEvents(), api<EvidenceRun[]>('GET', `/cases/${id}/parser-runs`)]);
+  [currentCase, parserRuns] = await Promise.all([api<EvidenceCase>('GET', `/cases/${id}`), api<EvidenceRun[]>('GET', `/cases/${id}/parser-runs`)]);
+  eventPage = undefined; element<HTMLInputElement>('search').value = '';
+  if (largeCase()) await loadEventPage('evidence');
+  else events = await api<EvidenceEvent[]>('GET', `/cases/${id}/events?limit=2000`);
+  await refreshMemoryJobs(id);
   root = undefined; selection = undefined; clearAnalysis();
   element('case-title').textContent = currentCase.name; element('case-id').textContent = currentCase.case_id;
-  element('status-counts').textContent = ['memory', 'disk', 'network'].map((source) => `${source.toUpperCase()} ${events.filter((event) => event.source === source).length}`).join(' · ');
+  element('status-counts').textContent = ['memory', 'disk', 'network'].map((source) => `${source.toUpperCase()} ${sourceCount(source)}`).join(' · ');
   await refreshCases(); view = 'case'; element<HTMLInputElement>('search').value = '';
-  renderRoot(); renderNavigation(); renderWorkspace(); renderInspector(); setStatus(`Loaded ${events.length} events. Select a memory process to analyze.`);
+  renderRoot(); renderNavigation(); renderWorkspace(); renderInspector(); setStatus(largeCase() ? `${currentCase.event_count.toLocaleString()} events available. Tables load 100 events per page.` : `Loaded ${events.length} events. Select a memory process to analyze.`);
 }
 function section(title: string): HTMLElement { const node = U.el('div', '', 'inspector-section'); node.append(U.el('h3', title)); return node; }
 function artifactImportForm(): HTMLElement {
@@ -190,9 +227,11 @@ function artifactImportForm(): HTMLElement {
     ['extracted_at', 'Extraction timestamp with timezone', '2026-09-16T09:35:00Z', true],
     ['hostname', 'Evidence host (optional)', 'workstation-01', false],
     ['volume_id', 'Disk volume ID (optional)', 'volume-C', false],
+    ['mount_point', 'Known disk drive mapping (optional)', 'C:\\', false],
     ['recovered_directory', 'Recovered files folder (dumpfiles)', '/analysis/recovered', false],
     ['timezone', 'Source timezone for naive timestamps', 'UTC', false],
     ['logical_path', 'Original path for a recovered disk file', 'C:\\Users\\test\\AppData\\Local\\Temp\\a.ps1', false],
+    ['tls_keylog_file', 'Supplied TLS key log (optional)', 'Choose a key log to enable TLS decryption', false],
   ] as [string, string, string, boolean][]) {
     const label = U.el('label', name), input = U.el('input'); input.id = `import-${key}`; input.placeholder = placeholder;
     input.required = required; input.value = savedImportContext[key] ?? ''; inputs[key] = input; label.append(input); fields.append(label);
@@ -211,7 +250,9 @@ function artifactImportForm(): HTMLElement {
         const context = { acquisition_id: inputs.acquisition_id.value.trim(), extracted_at: inputs.extracted_at.value.trim(),
           hostname: inputs.hostname.value.trim() || null, volume_id: inputs.volume_id.value.trim() || null,
           recovered_directory: inputs.recovered_directory.value.trim() || null, timezone: inputs.timezone.value.trim() || null };
-        const supplied = { ...context, logical_path: inputs.logical_path.value.trim() || null };
+        const supplied = { ...context, logical_path: inputs.logical_path.value.trim() || null,
+          mount_point: inputs.mount_point.value.trim() || null,
+          tls_keylog_file: kind === 'network' ? inputs.tls_keylog_file.value.trim() || null : null };
         setStatus(`Importing ${kind} evidence…`);
         const result = await window.evidenceMesh.importArtifact(currentCase.case_id, kind, supplied, kind === 'disk' ? format.value : undefined);
         if (result) {
@@ -223,7 +264,61 @@ function artifactImportForm(): HTMLElement {
     }); button.id = `import-${kind}`; button.disabled = busy; actions.append(button);
     if (kind === 'disk') actions.append(format);
   }
+  const rawOptions = U.el('details'); rawOptions.append(U.el('summary', 'Raw memory options'));
+  inputs.tls_keylog_file.parentElement!.append(U.button('Choose key log', () => {
+    void window.evidenceMesh.selectTLSKeylog().then((path) => {
+      if (path) { inputs.tls_keylog_file.value = path; savedImportContext.tls_keylog_file = path; }
+    }).catch((error) => setStatus(String(error), true));
+  }));
+  const pluginOptions = U.el('div', '', 'import-fields');
+  const selectedPlugins = rawMemoryPlugins.map((plugin) => {
+    const label = U.el('label', plugin), input = U.el('input'); input.type = 'checkbox'; input.checked = true;
+    label.prepend(input); pluginOptions.append(label); return { plugin, input };
+  });
+  const rerunLabel = U.el('label', 'Re-run plugins instead of using verified cache'), rerun = U.el('input');
+  rerun.type = 'checkbox'; rerunLabel.prepend(rerun);
+  const objectsLabel = U.el('label', 'Optional FILE_OBJECT virtual addresses to extract (hex, comma separated)');
+  const objects = U.el('input'); objects.id = 'memory-file-objects'; objectsLabel.append(objects);
+  rawOptions.append(pluginOptions, rerunLabel, objectsLabel);
+  const rawButton = U.button('Analyze memory image', () => {
+    if (!form.reportValidity()) return;
+    savedImportContext = Object.fromEntries(Object.entries(inputs).map(([name, input]) => [name, input.value.trim()]));
+    void action(async () => {
+      if (!currentCase) return;
+      const fileObjects = objects.value.split(',').map((value) => value.trim()).filter(Boolean);
+      const plugins = selectedPlugins.filter((choice) => choice.input.checked).map((choice) => choice.plugin);
+      if (fileObjects.length) plugins.push('windows.dumpfiles');
+      const result = await window.evidenceMesh.startMemoryAnalysis(currentCase.case_id, {
+        context: { acquisition_id: inputs.acquisition_id.value.trim(), extracted_at: inputs.extracted_at.value.trim(),
+          hostname: inputs.hostname.value.trim() || null, timezone: inputs.timezone.value.trim() || null },
+        plugins, rerun: rerun.checked, file_objects: fileObjects,
+      });
+      if (result) {
+        memoryJobs.push(result); renderWorkspace(); await refreshMemoryJobs(currentCase.case_id);
+        setStatus('Memory analysis started. Progress and cancellation are available in the case workspace.');
+      }
+    });
+  }); rawButton.id = 'analyze-memory-image'; rawButton.disabled = busy;
+  const diskButton = U.button('Inspect disk image', () => {
+    if (!form.reportValidity()) return;
+    savedImportContext = Object.fromEntries(Object.entries(inputs).map(([name, input]) => [name, input.value.trim()]));
+    void action(async () => {
+      if (!currentCase) return;
+      const caseId = currentCase.case_id;
+      const context = { acquisition_id: inputs.acquisition_id.value.trim(), extracted_at: inputs.extracted_at.value.trim(),
+        hostname: inputs.hostname.value.trim() || null, mount_point: inputs.mount_point.value.trim() || null,
+        timezone: inputs.timezone.value.trim() || null };
+      setStatus('Reading disk partitions and discovering NTFS artifacts…');
+      const report = await window.evidenceMesh.inspectDiskImage(caseId, context);
+      if (report && currentCase?.case_id === caseId) {
+        diskInspection = { caseId, report, context }; renderWorkspace();
+        setStatus(`Detected ${report.volumes.length} volumes. Choose volumes and artifacts to extract.`);
+      }
+    });
+  }); diskButton.id = 'inspect-disk-image'; diskButton.disabled = busy;
+  actions.append(rawButton, diskButton); form.append(rawOptions);
   form.append(fields, actions, U.el('p', 'Select a Volatility export folder, disk artifact or packet capture. Originals remain read-only.', 'muted small'));
+  if (diskInspection?.caseId === currentCase?.case_id) form.append(diskImagePanel());
   form.addEventListener('submit', (event) => event.preventDefault()); return form;
 }
 function renderCase(): HTMLElement {
@@ -236,10 +331,10 @@ function renderCase(): HTMLElement {
   if (currentCase) {
     const facts = U.el('div', '', 'case-facts'); facts.append(U.fields([['CASE', currentCase.name], ['IDENTIFIER', currentCase.case_id]]),
       U.fields([['EVIDENCE REVISION', currentCase.revision], ['ANALYSIS', analysis ? `${analysis.correlation_count} links · current selection` : currentCase.analysis_revision === currentCase.revision ? 'Stored analysis available; select a process to analyze' : 'Analysis required']]));
-    container.append(facts, artifactImportForm());
+    container.append(facts, artifactImportForm(), memoryJobPanel());
   } else container.append(U.el('p', 'Open an existing case, create an investigation, or load the synthetic sample evidence.', 'muted'));
-  const sourceRows = ['memory', 'disk', 'network'].map((source) => ({ source, count: events.filter((event) => event.source === source).length,
-    artifacts: new Set(events.filter((event) => event.source === source).map((event) => event.source_artifact?.artifact_id).filter(Boolean)).size }));
+  const sourceRows = ['memory', 'disk', 'network'].map((source) => ({ source, count: sourceCount(source),
+    artifacts: largeCase() ? 'See Parser Runs' : new Set(events.filter((event) => event.source === source).map((event) => event.source_artifact?.artifact_id).filter(Boolean)).size }));
   container.append(U.table(sourceRows, [
     { label: 'EVIDENCE SOURCE', value: (row) => U.named(row.source === 'memory' ? 'Process' : row.source === 'disk' ? 'File' : 'IP', row.source.toUpperCase()) },
     { label: 'EVENTS', value: (row) => row.count }, { label: 'ARTIFACTS', value: (row) => row.artifacts },
@@ -247,6 +342,7 @@ function renderCase(): HTMLElement {
     { label: 'NEXT ACTION', value: (row) => row.source === 'memory' ? 'Select process → Analyze' : 'Inspect normalized evidence' },
   ], (row) => row.source, (row) => navigate(row.source === 'memory' ? 'processes' : row.source === 'disk' ? 'files' : 'connections'), undefined, 'source-table'));
   container.append(U.el('p', 'Analysis path: Process → Related evidence → Score & reasons → Provenance → Timeline / Graph', 'muted small'));
+  container.append(runtimePanel());
   return container;
 }
 function eventColumns(): MeshUI.Column<EvidenceEvent>[] {
@@ -329,7 +425,7 @@ function renderWorkspace(): void {
   } else {
     if (view === 'timeline') {
       const options = U.el('div', '', 'view-options'), label = U.el('label'), input = U.el('input'); input.type = 'checkbox'; input.id = 'incident-only'; input.checked = onlyIncident && !!analysis; input.disabled = !analysis;
-      input.addEventListener('change', () => { onlyIncident = input.checked; renderWorkspace(); }); label.append(input, U.el('span', 'Selected incident only'));
+      input.addEventListener('change', () => { onlyIncident = input.checked; refreshPagedView(); }); label.append(input, U.el('span', 'Selected incident only'));
       options.append(label);
       for (const [id, values, selected] of [
         ['timeline-source', ['', 'memory', 'disk', 'network'], timelineSource],
@@ -337,17 +433,26 @@ function renderWorkspace(): void {
       ] as [string, string[], string][]) {
         const select = U.el('select'); select.id = id; select.setAttribute('aria-label', id.replace('-', ' '));
         for (const value of values) select.add(new Option(value ? value.toUpperCase() : 'ALL ' + id.split('-')[1].toUpperCase(), value));
-        select.value = selected; select.addEventListener('change', () => { if (id.endsWith('source')) timelineSource = select.value; else timelineCategory = select.value; renderWorkspace(); }); options.append(select);
+        select.value = selected; select.addEventListener('change', () => { if (id.endsWith('source')) timelineSource = select.value; else timelineCategory = select.value; refreshPagedView(); }); options.append(select);
       }
       content.append(options);
     }
     const records = filter(visibleEvents(view)); count = records.length;
+    if (pagedRoute(view) && eventPage) {
+      const paging = U.el('div', '', 'view-options'); paging.id = 'server-pagination';
+      const previous = U.button('Previous 100', () => refreshPagedView(Math.max(0, eventPage!.offset - 100)));
+      const next = U.button('Next 100', () => refreshPagedView(eventPage!.offset + 100));
+      previous.id = 'previous-event-page'; next.id = 'next-event-page';
+      previous.disabled = busy || eventPage.offset === 0; next.disabled = busy || eventPage.offset + 100 >= eventPage.total;
+      paging.append(previous, U.el('span', `${eventPage.total ? eventPage.offset + 1 : 0}–${Math.min(eventPage.offset + events.length, eventPage.total)} of ${eventPage.total.toLocaleString()} · sorting applies to this page`), next);
+      content.append(paging);
+    }
     if (records.length) content.append(U.table(records, eventColumns(), (event) => event.event_id, (event) => selectEvent(event, view === 'processes'),
       selection && 'event' in selection ? selection.event.event_id : root?.event_id, view === 'processes' ? 'process-table' : view === 'timeline' ? 'timeline-table' : 'evidence-table'));
     else content.append(U.empty(`No ${titles[view].toLowerCase()} in this view`, element<HTMLInputElement>('search').value ? 'Change the filter to see other imported evidence.' : 'This view only shows imported observations. No records have been invented for this category.'));
   }
   element('view-count').textContent = `${count} ${view === 'correlations' || view === 'graph' ? 'links' : 'events'}`;
-  element('result-summary').textContent = `${count} displayed · ${events.length} total events · ${currentCase ? `revision ${currentCase.revision}` : 'no case'}`; controls();
+  element('result-summary').textContent = `${count} displayed · ${currentCase?.event_count ?? events.length} total events · ${currentCase ? `revision ${currentCase.revision}` : 'no case'}`; controls();
 }
 
 function provenanceView(event: EvidenceEvent): HTMLElement {
@@ -390,8 +495,13 @@ function eventOverview(event: EvidenceEvent): HTMLElement {
   if (event.memory_region) values.push(['Region start / end', `${event.memory_region.start} / ${event.memory_region.end ?? '?'}`], ['Protection', event.memory_region.protection]);
   if (event.service) values.push(['Service', event.service.name], ['State', event.service.state], ['Binary', event.service.binary_path]);
   if (event.registry) values.push(['Registry artifact', event.registry.artifact], ['Hive / key', `${event.registry.hive ?? ''} ${event.registry.path ?? ''}`]);
-  if (event.network?.tls) values.push(['TLS SNI', event.network.tls.sni], ['TLS version', event.network.tls.version]);
+  if (event.network?.tls) values.push(['TLS SNI', event.network.tls.sni], ['TLS version', event.network.tls.version],
+    ['TLS content', event.network.tls.decryption === 'decrypted_with_supplied_key' ? 'Decrypted using supplied key log' : 'Encrypted - metadata only'],
+    ['Key log', event.network.tls.key_log_supplied ? 'Supplied' : 'Not supplied']);
   if (event.network?.http) values.push(['HTTP method / status', `${event.network.http.method ?? ''} ${event.network.http.status ?? ''}`], ['Host / URI', `${event.network.http.host ?? ''}${event.network.http.uri ?? ''}`]);
+  if (event.network?.http?.body_sha256) values.push(['Recovered HTTP body', event.network.http.recovered_path],
+    ['Body SHA-256', event.network.http.body_sha256], ['Body bytes', event.network.http.body_size]);
+  if (event.network?.http?.decrypted_with_supplied_key) values.push(['TLS content', 'Decrypted using supplied key log']);
   if (event.network?.packet_count != null) values.push(['Packets / bytes', `${event.network.packet_count} / ${event.network.byte_count}`], ['Flow end', time(event.network.end_time, true)]);
   if (event.event_log) values.push(['Provider / event ID', `${event.event_log.provider} / ${event.event_log.event_id}`], ['Record ID', event.event_log.record_id]);
   if (event.prefetch) values.push(['Executable', event.prefetch.executable], ['Run count', event.prefetch.run_count]);
@@ -506,6 +616,25 @@ function renderGraph(container: HTMLElement): void {
   const legend = U.el('div', '', 'graph-legend');
   for (const kind of ['Process', 'File', 'Domain', 'IP']) { const item = U.el('span', kind); item.prepend(U.icon(kind, 12)); legend.append(item); }
   toolbar.append(modes, legend); container.append(toolbar);
+  const bounds = U.el('div', '', 'view-options');
+  const depth = U.el('input'), limit = U.el('input'), score = U.el('input'), types = U.el('select');
+  for (const [name, input, value, minimum, maximum] of [
+    ['Depth', depth, graphDepth, 0, 8], ['Maximum nodes', limit, graphLimit, 1, 2000], ['Minimum score', score, graphScore, 0, 100],
+  ] as [string, HTMLInputElement, number, number, number][]) {
+    const label = U.el('label', name); input.type = 'number'; input.value = String(value); input.min = String(minimum); input.max = String(maximum);
+    input.setAttribute('aria-label', name); label.append(input); bounds.append(label);
+  }
+  for (const kind of ['', 'Event', 'Process', 'File', 'IP', 'Domain', 'Module', 'Driver', 'MemoryRegion', 'RegistryArtifact']) types.add(new Option(kind || 'All node types', kind));
+  types.value = graphTypes; types.setAttribute('aria-label', 'Graph node type'); bounds.append(types);
+  bounds.append(U.button('Apply graph limits', () => { void action(async () => {
+    if (!currentCase || !root || !depth.reportValidity() || !limit.reportValidity() || !score.reportValidity()) return;
+    graphDepth = Number(depth.value); graphLimit = Number(limit.value); graphScore = Number(score.value); graphTypes = types.value;
+    const parameters = new URLSearchParams({ root_event_id: root.event_id, depth: String(graphDepth), limit: String(graphLimit), min_score: String(graphScore) });
+    if (graphTypes) parameters.set('node_types', graphTypes);
+    graph = await api<EvidenceGraph>('GET', `/cases/${currentCase.case_id}/graph?${parameters}`);
+    if (graphTypes) graphMode = graphTypes === 'Event' ? 'events' : 'entities'; renderWorkspace();
+  }); })); container.append(bounds);
+  if (graph.truncated) container.append(U.el('p', 'Graph is bounded by the selected depth and node limit. Change these settings to inspect more evidence.', 'muted small'));
   const isEvents = graphMode === 'events';
   const allNodes = graph.nodes.filter((node) => isEvents ? node.kind === 'Event' : node.kind !== 'Event');
   const nodes = allNodes.slice(0, 200), ids = new Set(nodes.map((node) => node.id));
@@ -578,7 +707,10 @@ element('refresh').addEventListener('click', () => void action(async () => {
 element('case-select').addEventListener('change', () => void action(async () => {
   const input = element<HTMLSelectElement>('case-select'); if (input.value) await openCase(input.value); else input.value = currentCase?.case_id ?? '';
 }));
-element('search').addEventListener('input', () => renderWorkspace());
+element('search').addEventListener('input', () => {
+  if (pageSearchTimer) clearTimeout(pageSearchTimer);
+  if (pagedRoute(view)) pageSearchTimer = setTimeout(() => refreshPagedView(), 250); else renderWorkspace();
+});
 element('import-events').addEventListener('click', () => void action(async () => {
   if (!currentCase) return; const result = await window.evidenceMesh.importEvents(currentCase.case_id);
   if (result) { await openCase(currentCase.case_id); setStatus(`Imported ${result.imported} events. Select a process and analyze.`); }
@@ -587,14 +719,128 @@ element('analyze').addEventListener('click', () => void action(async () => {
   if (!currentCase || !root) return; clearAnalysis(); selection = { event: root }; renderInspector();
   setStatus('Correlating normalized evidence…');
   const base = `/cases/${currentCase.case_id}`, query = `?root_event_id=${encodeURIComponent(root.event_id)}`;
-  const result = await api<EvidenceAnalysis>('POST', `${base}/correlate`, { root_event_id: root.event_id });
-  const [newGraph, timeline] = await Promise.all([api<EvidenceGraph>('GET', `${base}/graph${query}`), api<{ events: EvidenceEvent[] }>('GET', `${base}/timeline${query}`)]);
+  const result = await api<EvidenceAnalysis>('POST', `${base}/correlate`, { root_event_id: root.event_id, result_limit: 2000 });
+  graphDepth = largeCase() ? 2 : 8; graphLimit = 500; graphScore = 0; graphTypes = '';
+  const [newGraph, timeline] = await Promise.all([api<EvidenceGraph>('GET', `${base}/graph${query}&depth=${graphDepth}&limit=${graphLimit}`), api<{ events: EvidenceEvent[] }>('GET', `${base}/timeline${query}&limit=${largeCase() ? 500 : 2000}`)]);
   analysis = result; graph = newGraph; incidentEvents = timeline.events; currentCase.analysis_revision = currentCase.revision;
   view = 'correlations'; onlyIncident = true; element<HTMLInputElement>('search').value = '';
   if (result.correlations[0]) selection = { edge: result.correlations[0] };
   inspectorTab = 'Overview'; renderNavigation(); renderWorkspace(); renderInspector();
   setStatus(result.status === 'no_matches' ? 'No matching evidence at the current score threshold.' : `${incidentEvents.length} related events · ${result.correlation_count} explained links. Analysis complete.`);
 }));
+
+const rawMemoryPlugins = ['pslist', 'psscan', 'pstree', 'cmdline', 'envars', 'dlllist', 'handles', 'filescan',
+  'vadinfo', 'netscan', 'malware.malfind', 'svcscan', 'svclist', 'registry.amcache', 'registry.userassist',
+  'shimcachemem', 'modules', 'modscan', 'driverscan', 'callbacks'].map((name) => 'windows.' + name);
+let memoryJobs: import('./types').MemoryJob[] = [];
+let jobPoll: ReturnType<typeof setTimeout> | undefined;
+let dependencyReport: Record<string, unknown> | undefined;
+let diskInspection: { caseId: string; report: import('./types').DiskInspection; context: import('./types').ArtifactContext } | undefined;
+
+function diskImagePanel(): HTMLElement {
+  const panel = U.el('section'); panel.id = 'disk-image-panel';
+  if (!diskInspection) return panel;
+  const inspection = diskInspection;
+  panel.append(U.el('h3', 'Disk image → Detected volumes'), U.el('p', inspection.report.path, 'mono small'));
+  for (const warning of inspection.report.warnings) panel.append(U.el('p', warning, 'muted small'));
+  const volumeChoices: { id: string; input: HTMLInputElement }[] = [];
+  for (const volume of inspection.report.volumes.slice(0, 200)) {
+    const details = U.el('details'); details.open = true;
+    const summary = U.el('summary'), label = U.el('label'), input = U.el('input'); input.type = 'checkbox';
+    input.checked = ['SUCCESS', 'PARTIAL'].includes(volume.status); input.disabled = !input.checked;
+    label.append(input, document.createTextNode(`${volume.filesystem} ${volume.serial ?? volume.partition} · ${volume.status} · offset ${volume.offset}`));
+    summary.append(label); details.append(summary);
+    if (volume.error) details.append(U.el('p', volume.error, 'negative-score'));
+    for (const warning of volume.warnings ?? []) details.append(U.el('p', warning, 'muted small'));
+    const list = U.el('ul');
+    for (const item of volume.artifacts.slice(0, 100)) list.append(U.el('li', `${item.kind.toUpperCase()} · ${item.path} · ${item.size.toLocaleString()} bytes`, 'mono small'));
+    details.append(list);
+    if (volume.artifacts.length > 100) details.append(U.el('p', `${volume.artifacts.length - 100} additional artifacts discovered. Selection includes all matching artifacts.`, 'muted small'));
+    panel.append(details); volumeChoices.push({ id: volume.id, input });
+  }
+  if (inspection.report.volumes.length > 200) panel.append(U.el('p', 'Showing the first 200 volumes. Use the API to select additional volumes.', 'muted small'));
+  const choices = U.el('div', '', 'import-fields');
+  const kinds = ['mft', 'usn', 'prefetch', 'evtx', 'amcache'].map((kind) => {
+    const label = U.el('label', kind.toUpperCase()), input = U.el('input'); input.type = 'checkbox'; input.checked = true;
+    input.dataset.diskKind = kind; label.prepend(input); choices.append(label); return { kind, input };
+  });
+  panel.append(choices, U.button('Extract selected artifacts', () => { void action(async () => {
+    const volumes = volumeChoices.filter((choice) => choice.input.checked).map((choice) => choice.id);
+    const artifacts = kinds.filter((choice) => choice.input.checked).map((choice) => choice.kind);
+    if (!volumes.length || !artifacts.length) throw new Error('Select at least one supported volume and artifact kind.');
+    setStatus('Hashing original disk image and extracting selected artifacts…');
+    const result = await api<import('./types').ImportReport>('POST', `/cases/${inspection.caseId}/disk-images/import`, {
+      path: inspection.report.path, context: inspection.context, volumes, artifacts,
+    });
+    await openCase(inspection.caseId);
+    setStatus(`${result.status}: imported ${result.imported} disk events. Provenance links derived files to the original image.`, result.status === 'FAILED');
+  }); }));
+  return panel;
+}
+
+function terminalJob(status: string): boolean {
+  return ['SUCCESS', 'PARTIAL', 'FAILED', 'CANCELLED', 'UNAVAILABLE'].includes(status);
+}
+async function refreshMemoryJobs(caseId: string): Promise<void> {
+  if (jobPoll) clearTimeout(jobPoll);
+  const jobs = await api<import('./types').MemoryJob[]>('GET', `/cases/${caseId}/memory-jobs`);
+  if (currentCase?.case_id !== caseId) return;
+  memoryJobs = jobs;
+  const panel = document.getElementById('memory-job-panel');
+  if (panel) panel.replaceWith(memoryJobPanel());
+  if (jobs.some((job) => !terminalJob(job.status))) {
+    jobPoll = setTimeout(() => { void refreshMemoryJobs(caseId).catch((error) => setStatus(String(error), true)); }, 1000);
+  }
+}
+function memoryJobPanel(): HTMLElement {
+  const panel = U.el('section', '', 'artifact-import'); panel.id = 'memory-job-panel';
+  if (!memoryJobs.length) return panel;
+  panel.append(U.el('h3', 'Memory analysis'));
+  for (const job of memoryJobs.slice(-3).reverse()) {
+    const heading = U.el('div', '', 'import-actions');
+    heading.append(U.el('strong', `${job.status} · ${job.completed} / ${job.total}`),
+      U.el('span', job.path, 'mono muted small'));
+    if (!terminalJob(job.status)) heading.append(U.button('Cancel analysis', () => {
+      void api('POST', `/cases/${job.case_id}/memory-jobs/${job.job_id}/cancel`)
+        .then(() => refreshMemoryJobs(job.case_id)).catch((error) => setStatus(String(error), true));
+    }));
+    else if (job.report?.imported) heading.append(U.button('Load analysis results', () => {
+      void action(async () => { await openCase(job.case_id); navigate('processes'); });
+    }));
+    panel.append(heading);
+    if (job.error) panel.append(U.el('p', job.error, 'negative-score'));
+    panel.append(U.table(job.plugins, [
+      { label: 'PLUGIN', value: (row) => row.plugin },
+      { label: 'STATUS', value: (row) => U.badge(row.status, row.status === 'SUCCESS' ? 'success' : 'neutral') },
+      { label: 'OUTPUT', value: (row) => row.cached ? 'Verified cache' : 'Current run' },
+      { label: 'DETAIL', value: (row) => row.error ?? '—' },
+    ], (row) => row.plugin, () => undefined, undefined, 'memory-job-' + job.job_id));
+  }
+  return panel;
+}
+function runtimePanel(): HTMLElement {
+  const panel = U.el('section', '', 'artifact-import'); panel.append(U.el('h3', 'Runtime dependencies'));
+  panel.append(U.button('Check dependencies', () => { void action(async () => {
+    dependencyReport = await api<Record<string, unknown>>('GET', '/runtime/dependencies');
+    renderWorkspace();
+  }); }));
+  if (dependencyReport) {
+    const backend = dependencyReport.backend as { embedded: boolean; python: string; status: string };
+    const tshark = dependencyReport.tshark as { embedded: boolean; version?: string; status: string };
+    const components = dependencyReport.components as Record<string, { version?: string; status: string }>;
+    const rows = [
+      { name: 'Python Backend', mode: backend.embedded ? 'Embedded' : 'Development', version: backend.python, status: backend.status },
+      { name: 'Volatility 3', mode: backend.embedded ? 'Embedded' : 'Development', ...components.volatility3 },
+      { name: 'TShark', mode: tshark.embedded ? 'Embedded' : 'System', version: tshark.version, status: tshark.status },
+      { name: 'SQLite', mode: 'Backend runtime', ...(dependencyReport.sqlite as { version: string; status: string }) },
+    ];
+    panel.append(U.table(rows, [{ label: 'COMPONENT', value: (row) => row.name },
+      { label: 'RUNTIME', value: (row) => row.mode }, { label: 'VERSION', value: (row) => row.version ?? 'Unknown' },
+      { label: 'STATUS', value: (row) => row.status }], (row) => row.name, () => undefined, undefined, 'dependencies-table'));
+    panel.append(U.el('p', 'Workspace: ' + String(dependencyReport.workspace), 'mono muted small'));
+  }
+  return panel;
+}
 
 renderNavigation(); renderRoot(); renderWorkspace(); renderInspector();
 void action(async () => {

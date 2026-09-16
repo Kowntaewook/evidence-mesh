@@ -27,8 +27,10 @@ export interface EventRecord {
   network?: { src_ip?: string | null; src_port?: number | null; dst_ip?: string | null; dst_port?: number | null;
     protocol?: string | null; state?: string | null; dns_query?: string | null; resolved_ips?: string[];
     end_time?: string | null; packet_count?: number | null; byte_count?: number | null; stream_id?: string | null;
-    tls?: { sni?: string | null; version?: string | null } | null;
-    http?: { method?: string | null; host?: string | null; uri?: string | null; status?: number | null } | null } | null;
+    tls?: { sni?: string | null; version?: string | null; key_log_supplied?: boolean; decryption?: string } | null;
+    http?: { method?: string | null; host?: string | null; uri?: string | null; status?: number | null;
+      body_sha256?: string | null; body_size?: number | null; recovered_path?: string | null;
+      decrypted_with_supplied_key?: boolean } | null } | null;
   source_artifact?: Artifact | null; raw_reference?: Reference | null; parser?: Parser | null;
   provenance?: Provenance[]; raw?: Record<string, unknown> | null; attributes?: Record<string, unknown>;
 }
@@ -38,16 +40,33 @@ export interface Correlation { source_event: string; target_event: string; score
 export interface GraphNode { id: string; kind: string; label: string; event_ids: string[] }
 export interface GraphEdge { id: string; source: string; target: string; kind: string; score: number | null; reasons: Reason[]; event_ids: string[]; timestamp?: string | null; provenance?: Provenance[]; support_count?: number }
 export interface ParserRun { run_id: string; parser: string; plugin: string | null; source: string;
-  status: 'SUCCESS' | 'FAILED' | 'UNAVAILABLE' | 'SKIPPED'; event_count: number; row_count: number;
+  status: 'SUCCESS' | 'FAILED' | 'UNAVAILABLE' | 'SKIPPED' | 'TIMEOUT' | 'CANCELLED' | 'RUNNING' | 'PENDING'; event_count: number; row_count: number;
   error: string | null; stderr: string | null; command: string[]; warnings: string[]; artifact: Artifact | null }
 export interface ArtifactContext { acquisition_id: string; extracted_at: string; hostname?: string | null;
-  volume_id?: string | null; recovered_directory?: string | null; timezone?: string | null; logical_path?: string | null }
+  volume_id?: string | null; recovered_directory?: string | null; timezone?: string | null; logical_path?: string | null; mount_point?: string | null; tls_keylog_file?: string | null }
 export interface ImportReport { status: string; imported: number; runs: ParserRun[] }
-export interface Graph { nodes: GraphNode[]; edges: GraphEdge[]; root_event_id: string | null }
-export interface Analysis { status: 'completed' | 'no_matches'; event_count: number; correlation_count: number; correlations: Correlation[] }
+export interface MemoryJob {
+  job_id: string; case_id: string; path: string; status: string; completed: number; total: number;
+  plugins: { plugin: string; status: string; cached: boolean; error?: string | null }[];
+  error?: string | null; report?: ImportReport | null;
+}
+export interface MemoryOptions {
+  context: ArtifactContext; rerun: boolean; plugins?: string[]; file_objects?: string[];
+}
+export interface DiskInspection {
+  path: string; read_only: boolean; warnings: string[];
+  volumes: { id: string; offset: number; partition: string; size: number; filesystem: string;
+    serial?: string; status: string; error?: string; warnings?: string[];
+    artifacts: { kind: string; path: string; size: number; record: number; stream: string }[] }[];
+}
+export interface Graph { nodes: GraphNode[]; edges: GraphEdge[]; root_event_id: string | null; truncated?: boolean; supporting_events?: EventRecord[] }
+export interface Analysis { status: 'completed' | 'no_matches'; event_count: number; correlation_count: number; correlations: Correlation[]; truncated?: boolean }
 export interface Bridge {
   request(method: 'GET' | 'POST', path: string, body?: unknown): Promise<unknown>;
   importEvents(caseId: string): Promise<{ imported: number } | null>;
   importArtifact(caseId: string, kind: string, context: ArtifactContext, format?: string): Promise<ImportReport | null>;
+  startMemoryAnalysis(caseId: string, options: MemoryOptions): Promise<MemoryJob | null>;
+  inspectDiskImage(caseId: string, context: ArtifactContext): Promise<DiskInspection | null>;
+  selectTLSKeylog(): Promise<string | null>;
 }
 declare global { interface Window { evidenceMesh: Bridge } }

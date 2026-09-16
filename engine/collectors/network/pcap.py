@@ -1,6 +1,7 @@
 """Offline PCAP/PCAPNG decoding via an installed tshark; never opens a capture interface."""
 
 import csv
+import hashlib
 import shutil
 import subprocess
 import tempfile
@@ -9,6 +10,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from engine.ingestion.evidence import ArtifactError, DependencyUnavailable, EvidenceReader, number
+from engine.runtime import resolve_tshark, workspace_root
 from schemas.events import Source
 from schemas.imports import ArtifactContext, ImportBatch, ParserRun, RunStatus
 
@@ -17,8 +19,12 @@ FIELDS = (
     "tcp.srcport tcp.dstport udp.srcport udp.dstport tcp.stream udp.stream tcp.flags "
     "dns.id dns.flags.response dns.qry.name dns.qry.type dns.a dns.aaaa dns.resp.name "
     "http.request.method http.host http.request.uri http.user_agent http.response.code http.content_type "
-    "tls.handshake.extensions_server_name tls.handshake.version tls.record.version"
+    "tls.handshake.extensions_server_name tls.handshake.version tls.record.version "
+    "http.file_data http.body.reassembled.data http.content_length http.transfer_encoding "
+    "http.content_encoding tls.app_data_proto"
 ).split()
+MAX_BODY_BYTES = 32 * 1024 * 1024
+BODY_FIELDS = {"http.file_data", "http.body.reassembled.data"}
 
 
 def first(row, name):
@@ -37,8 +43,15 @@ def epoch(value):
 
 
 class PcapAdapter:
-    def __init__(self, context: ArtifactContext, executable: str | None = None, timeout: int = 180):
+    def __init__(
+        self,
+        context: ArtifactContext,
+        executable: str | None = None,
+        timeout: int = 180,
+        workspace: Path | None = None,
+    ):
         self.context, self.executable, self.timeout = context, executable, timeout
+        self.workspace = Path(workspace) if workspace else workspace_root()
 
     def load_file(self, path: Path) -> ImportBatch:
         run = ParserRun(parser="TsharkAdapter", source=Source.NETWORK, status=RunStatus.FAILED)
@@ -46,7 +59,7 @@ class PcapAdapter:
         try:
             reader = EvidenceReader(path, Source.NETWORK, "PCAP", self.context, run.parser)
             run.artifact = reader.artifact
-            executable = self.executable or shutil.which("tshark")
+            executable = resolve_tshark(self.executable, system=shutil.which)
             if not executable:
                 raise DependencyUnavailable("tshark is not installed; PCAP was not imported")
             run.command = [
@@ -67,6 +80,18 @@ class PcapAdapter:
                 "-E",
                 "aggregator=,",
             ]
+            for option in (
+                "tcp.desegment_tcp_streams:TRUE",
+                "http.desegment_body:TRUE",
+                "http.dechunk_body:TRUE",
+                "http.decompress_body:FALSE",
+            ):
+                run.command.extend(["-o", option])
+            if self.context.tls_keylog_file:
+                keylog = Path(self.context.tls_keylog_file).expanduser().resolve()
+                if not keylog.is_file() or keylog.stat().st_size > 64 * 1024 * 1024:
+                    raise ArtifactError("Supplied TLS key log must be an existing file up to 64 MiB")
+                run.command.extend(["-o", f"tls.keylog_file:{keylog}"])
             for field in FIELDS:
                 run.command.extend(["-e", field])
             with tempfile.TemporaryFile(mode="w+", encoding="utf-8", newline="") as decoded:
@@ -83,6 +108,7 @@ class PcapAdapter:
                         raise ArtifactError(f"tshark exited with code {result.returncode}: {run.stderr}")
                     run.exit_code = result.returncode
                 decoded.seek(0)
+                csv.field_size_limit(MAX_BODY_BYTES * 2 + 1024)
                 records = csv.DictReader(decoded, delimiter="\t", strict=True)
                 if records.fieldnames != FIELDS:
                     raise ArtifactError("tshark output fields do not match the requested schema")
@@ -91,7 +117,7 @@ class PcapAdapter:
                     if None in row or any(value is None for value in row.values()):
                         raise ArtifactError("Malformed tshark output row")
                     run.row_count += 1
-                    events.extend(self._packet(reader, row, flows))
+                    events.extend(self._packet(reader, row, flows, run.warnings))
                 for flow in flows.values():
                     events.append(self._flow(reader, flow))
                 if not run.row_count:
@@ -109,7 +135,19 @@ class PcapAdapter:
         run.finished_at = datetime.now(UTC)
         return batch
 
-    def _packet(self, reader, row, flows):
+    def _packet(self, reader, row, flows, warnings=None):
+        warnings = [] if warnings is None else warnings
+        body = {}
+        try:
+            body = self._recover_body(reader, row)
+        except (ArtifactError, OSError, ValueError) as exc:
+            warnings.append(f"Frame {first(row, 'frame.number')}: HTTP body not recovered: {exc}")
+        # Keep packet fields and a derived-file reference, without duplicating
+        # potentially large body bytes in every event/flow provenance record.
+        row = {key: value for key, value in row.items() if key not in BODY_FIELDS}
+        if body:
+            row["recovered_body_sha256"] = body["body_sha256"]
+            row["recovered_body_path"] = body["recovered_path"]
         frame = number(first(row, "frame.number"), "frame.number", True)
         observed = epoch(first(row, "frame.time_epoch"))
         size = number(first(row, "frame.len"), "frame.len", True)
@@ -149,7 +187,7 @@ class PcapAdapter:
             flow["flags"].add(flags)
         events = []
 
-        def emit(event_type, extra, suffix=""):
+        def emit(event_type, extra, suffix="", **fields):
             events.append(
                 reader.event(
                     f"frame:{frame}",
@@ -161,6 +199,7 @@ class PcapAdapter:
                     timestamp_precision=0.000001,
                     network={**network, **extra},
                     attributes={"frame_number": frame},
+                    **fields,
                 )
             )
 
@@ -181,6 +220,7 @@ class PcapAdapter:
                 },
             )
         if any(first(row, name) is not None for name in ("http.request.method", "http.response.code")):
+            decrypted = bool(self.context.tls_keylog_file and first(row, "tls.app_data_proto"))
             emit(
                 "http_request" if first(row, "http.request.method") else "http_response",
                 {
@@ -191,8 +231,23 @@ class PcapAdapter:
                         "user_agent": first(row, "http.user_agent"),
                         "status": number(first(row, "http.response.code"), "HTTP status"),
                         "content_type": first(row, "http.content_type"),
+                        "transfer_encoding": first(row, "http.transfer_encoding"),
+                        "content_encoding": first(row, "http.content_encoding"),
+                        "decrypted_with_supplied_key": decrypted,
+                        **body,
                     }
                 },
+                **(
+                    {
+                        "file": {
+                            "path": body["recovered_path"],
+                            "sha256": body["body_sha256"],
+                            "size": body["body_size"],
+                        }
+                    }
+                    if body
+                    else {}
+                ),
             )
         sni = first(row, "tls.handshake.extensions_server_name")
         version = first(row, "tls.handshake.version") or first(row, "tls.record.version")
@@ -208,10 +263,45 @@ class PcapAdapter:
                         "client_ip": client.get("src_ip"),
                         "server_ip": client.get("dst_ip"),
                         "server_port": client.get("dst_port"),
+                        "key_log_supplied": bool(self.context.tls_keylog_file),
+                        "decryption": "decrypted_with_supplied_key"
+                        if self.context.tls_keylog_file
+                        and first(row, "tls.app_data_proto")
+                        and events
+                        and events[-1].network.http
+                        else "metadata_only",
                     }
                 },
             )
         return events
+
+    def _recover_body(self, reader, row):
+        encoded = row.get("http.file_data") or row.get("http.body.reassembled.data")
+        if not encoded:
+            return {}
+        if "," in encoded:
+            raise ArtifactError("Multiple HTTP bodies share one packet; body association is ambiguous")
+        if len(encoded) > MAX_BODY_BYTES * 2:
+            raise ArtifactError("Body exceeds the 32 MiB recovery bound")
+        content = bytes.fromhex(encoded.replace(":", ""))
+        declared = first(row, "http.content_length")
+        if declared and not first(row, "http.transfer_encoding") and int(declared) != len(content):
+            raise ArtifactError("Incomplete Content-Length body")
+        digest = hashlib.sha256(content).hexdigest()
+        target = (
+            self.workspace / "derived" / "network" / reader.artifact.sha256 / "bodies" / (digest + ".bin")
+        )
+        target.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with target.open("xb") as output:
+                output.write(content)
+        except FileExistsError:
+            if (
+                target.stat().st_size != len(content)
+                or hashlib.sha256(target.read_bytes()).hexdigest() != digest
+            ):
+                raise ArtifactError("Existing derived body failed integrity verification") from None
+        return {"body_sha256": digest, "body_size": len(content), "recovered_path": str(target.resolve())}
 
     def _flow(self, reader, flow):
         frames = flow["frames"]

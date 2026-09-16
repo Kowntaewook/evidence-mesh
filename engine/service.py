@@ -29,8 +29,9 @@ class AnalysisService:
             status="completed" if correlations else "no_matches",
             event_count=len(events),
             correlation_count=len(correlations),
-            correlations=correlations,
+            correlations=correlations[: request.result_limit] if request.result_limit else correlations,
             root_event_id=request.root_event_id,
+            truncated=request.result_limit is not None and len(correlations) > request.result_limit,
         )
 
     def view(self, case_id: str, root: str | None = None):

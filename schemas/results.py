@@ -4,6 +4,7 @@ from typing import Annotated
 
 from pydantic import Field, model_validator
 
+from engine.version import VERSION
 from schemas.events import Event, Model, Provenance, Timestamp
 
 
@@ -20,7 +21,7 @@ class Correlation(Model):
     score: Annotated[int, Field(ge=0, le=100)]
     reasons: list[Reason] = Field(min_length=1)
     raw_score: int | None = None
-    rule_version: str = "0.3.0"
+    rule_version: str = VERSION
 
     @model_validator(mode="after")
     def score_matches_reasons(self):
@@ -101,6 +102,8 @@ class IncidentGraph(Model):
     nodes: list[Node]
     edges: list[Edge]
     root_event_id: str | None = None
+    truncated: bool = False
+    supporting_events: list[Event] = Field(default_factory=list)
 
 
 class CaseCreate(Model):
@@ -119,6 +122,7 @@ class Case(CaseCreate):
 class AnalysisRequest(Model):
     root_event_id: str | None = None
     min_score: int = Field(default=50, ge=1, le=100)
+    result_limit: int | None = Field(default=None, ge=1, le=5000)
 
 
 class AnalysisResult(Model):
@@ -127,6 +131,7 @@ class AnalysisResult(Model):
     correlation_count: int
     correlations: list[Correlation]
     root_event_id: str | None = None
+    truncated: bool = False
 
 
 class Timeline(Model):

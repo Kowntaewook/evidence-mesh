@@ -5,6 +5,8 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, model_validator
 
+from engine.version import VERSION
+
 
 class Model(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
@@ -64,6 +66,7 @@ class File(Model):
     si_timestamps: dict[str, Timestamp] = Field(default_factory=dict)
     fn_timestamps: dict[str, Timestamp] = Field(default_factory=dict)
     file_object: Address | None = None
+    file_id128: Address | None = None
 
 
 class HTTPInfo(Model):
@@ -73,6 +76,12 @@ class HTTPInfo(Model):
     user_agent: str | None = None
     status: Annotated[int, Field(ge=100, le=599)] | None = None
     content_type: str | None = None
+    body_sha256: str | None = None
+    body_size: NonNegative | None = None
+    recovered_path: str | None = None
+    transfer_encoding: str | None = None
+    content_encoding: str | None = None
+    decrypted_with_supplied_key: bool = False
 
 
 class TLSInfo(Model):
@@ -81,6 +90,8 @@ class TLSInfo(Model):
     client_ip: str | None = None
     server_ip: str | None = None
     server_port: Port | None = None
+    key_log_supplied: bool = False
+    decryption: Literal["metadata_only", "decrypted_with_supplied_key"] = "metadata_only"
 
     @model_validator(mode="after")
     def valid_addresses(self):
@@ -140,7 +151,7 @@ class SourceArtifact(Model):
 
 class ParserInfo(Model):
     name: str
-    version: str
+    version: str = VERSION
 
 
 class RawReference(Model):
@@ -258,6 +269,9 @@ class JournalInfo(Model):
     source_info: str | None = None
     file_reference: str | None = None
     parent_reference: str | None = None
+    version: int | None = None
+    extents: list[dict[str, NonNegative]] = Field(default_factory=list)
+    remaining_extents: NonNegative | None = None
 
 
 class Event(Model):

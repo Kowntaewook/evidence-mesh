@@ -19,6 +19,7 @@ from engine.normalization import normalize_event
 from engine.normalization.windows import path_key
 from engine.parsers.volatility.registry import SPECS, canonical_plugin, filename_plugin
 from engine.parsers.volatility.rows import PLUGINS, ImportContext, read_rows
+from engine.version import VERSION
 from schemas.events import Event, Process, Source, SourceArtifact
 from schemas.imports import ArtifactContext, ImportBatch, ParserRun, RunStatus
 
@@ -399,7 +400,7 @@ class MemoryImportAdapter:
                 "timestamp_semantics": semantics if observed else "extraction_time",
                 "hostname": self.context.hostname,
                 "process": process.model_dump(mode="json") if process else None,
-                "parser": {"name": "Volatility3Adapter", "version": "0.3.0"},
+                "parser": {"name": "Volatility3Adapter", "version": VERSION},
                 "source_artifact": primary.source_artifact.model_dump(mode="json"),
                 "raw_reference": primary.raw_reference.model_dump(),
                 "raw": raw,

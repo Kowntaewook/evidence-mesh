@@ -64,11 +64,17 @@ def filename_plugin(stem: str) -> str:
     return canonical_plugin(f"windows.{stem}")
 
 
-def discover_plugins(executable: str | None = None, timeout: float = 30) -> dict:
+def discover_plugins(
+    executable: str | None = None, timeout: float = 30, command: list[str] | None = None
+) -> dict:
     binary = executable or shutil.which("vol") or shutil.which("volatility3")
     if not binary and (Path(sys.executable).parent / "vol").is_file():
         binary = str(Path(sys.executable).parent / "vol")
-    command = [binary, "--help"] if binary else []
+    if command:
+        binary = command[0]
+        command = [*command, "--help"]
+    else:
+        command = [binary, "--help"] if binary else []
     error, stderr, output = None, "", ""
     if not binary:
         error = "Volatility executable not installed; export parsing remains available"

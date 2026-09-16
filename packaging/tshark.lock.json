@@ -1,0 +1,351 @@
+{
+  "version": "4.6.8",
+  "binary": {
+    "name": "WiresharkPortable64_4.6.8.paf.exe",
+    "url": "https://www.wireshark.org/download/win64/WiresharkPortable64_4.6.8.paf.exe",
+    "sha256": "d6cf5056586a0156c8634a9d9b3097e60a8dda408b889c9afc4445ec2b18d581"
+  },
+  "files": [
+    "brotlicommon.dll",
+    "brotlidec.dll",
+    "cares.dll",
+    "comerr64.dll",
+    "glib-2.0-0.dll",
+    "gmodule-2.0-0.dll",
+    "iconv-2.dll",
+    "intl-8.dll",
+    "k5sprt64.dll",
+    "krb5_64.dll",
+    "libffi-8.dll",
+    "libgcrypt-20.dll",
+    "libgmp-10.dll",
+    "libgnutls-30.dll",
+    "libgpg-error-0.dll",
+    "libhogweed-6.dll",
+    "libiconv-2.dll",
+    "libintl-8.dll",
+    "libnettle-8.dll",
+    "libp11-kit-0.dll",
+    "libsmi-2.dll",
+    "libtasn1-6.dll",
+    "libwireshark.dll",
+    "libwiretap.dll",
+    "libwsutil.dll",
+    "libxml2.dll",
+    "lua54.dll",
+    "lz4.dll",
+    "msvcp140.dll",
+    "nghttp2.dll",
+    "nghttp3.dll",
+    "pcre2-8.dll",
+    "snappy.dll",
+    "tshark.exe",
+    "vcruntime140.dll",
+    "vcruntime140_1.dll",
+    "xxhash.dll",
+    "zlib-ng2.dll",
+    "zlib1.dll",
+    "zstd.dll"
+  ],
+  "os_dlls": [
+    "advapi32.dll",
+    "api-ms-win-crt-conio-l1-1-0.dll",
+    "api-ms-win-crt-convert-l1-1-0.dll",
+    "api-ms-win-crt-environment-l1-1-0.dll",
+    "api-ms-win-crt-filesystem-l1-1-0.dll",
+    "api-ms-win-crt-heap-l1-1-0.dll",
+    "api-ms-win-crt-locale-l1-1-0.dll",
+    "api-ms-win-crt-math-l1-1-0.dll",
+    "api-ms-win-crt-private-l1-1-0.dll",
+    "api-ms-win-crt-process-l1-1-0.dll",
+    "api-ms-win-crt-runtime-l1-1-0.dll",
+    "api-ms-win-crt-stdio-l1-1-0.dll",
+    "api-ms-win-crt-string-l1-1-0.dll",
+    "api-ms-win-crt-time-l1-1-0.dll",
+    "api-ms-win-crt-utility-l1-1-0.dll",
+    "bcrypt.dll",
+    "crypt32.dll",
+    "dnsapi.dll",
+    "gdi32.dll",
+    "iphlpapi.dll",
+    "kernel32.dll",
+    "ncrypt.dll",
+    "ole32.dll",
+    "psapi.dll",
+    "secur32.dll",
+    "shell32.dll",
+    "user32.dll",
+    "ws2_32.dll"
+  ],
+  "data_directories": [
+    "diameter",
+    "dtds",
+    "radius",
+    "tls",
+    "wimaxasncp",
+    "tpncp",
+    "protobuf",
+    "profiles",
+    "snmp"
+  ],
+  "data_files": [
+    "COPYING.txt",
+    "README.txt",
+    "README.xml-output",
+    "tshark.html",
+    "wireshark-filter.html",
+    "pdml2html.xsl",
+    "cfilters",
+    "dfilters",
+    "dmacros",
+    "smi_modules",
+    "wka"
+  ],
+  "sources": [
+    {
+      "name": "wireshark-4.6.8.tar.xz",
+      "url": "https://www.wireshark.org/download/src/wireshark-4.6.8.tar.xz",
+      "license": "GPL-2.0-or-later",
+      "sha256": "c0f1ccf217bc0d3b51a9c03ea178b0f7df682e475da26a2d21cd4a1bdd9579d0",
+      "size": 56464692
+    },
+    {
+      "name": "wireshark-build-recipes-bc0475cb752c1f870f9879db9c0744e3617756b0.tar.gz",
+      "url": "https://gitlab.com/wireshark/wireshark-vcpkg-scripts/-/archive/bc0475cb752c1f870f9879db9c0744e3617756b0/wireshark-vcpkg-scripts-bc0475cb752c1f870f9879db9c0744e3617756b0.tar.gz",
+      "license": "build recipes and patches",
+      "sha256": "9ede4e4ab7fda60a0cb63af2bfe275e417de306f72832268fbe9884af614471c",
+      "size": 42708
+    },
+    {
+      "name": "wireshark-build-recipes-b1d8ce808301a4882921400566f8757366ad219c.tar.gz",
+      "url": "https://gitlab.com/wireshark/wireshark-vcpkg-scripts/-/archive/b1d8ce808301a4882921400566f8757366ad219c/wireshark-vcpkg-scripts-b1d8ce808301a4882921400566f8757366ad219c.tar.gz",
+      "license": "build recipes and patches",
+      "sha256": "162c98c083f9a091f3f5c6d8d0a316eb5d99349bef93d8621eec4f317fe13950",
+      "size": 37889
+    },
+    {
+      "name": "vcpkg-2026.01.16.tar.gz",
+      "url": "https://codeload.github.com/microsoft/vcpkg/tar.gz/refs/tags/2026.01.16",
+      "license": "MIT, with individual port licenses",
+      "sha256": "3949aef319ca0dce2eee7ea147733a7c225d6211e35f0558c7058730d2b78971",
+      "size": 4971165
+    },
+    {
+      "name": "mingw-w64-gettext-1.0-1.src.tar.zst",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-gettext-1.0-1.src.tar.zst",
+      "license": "LGPL-2.1-or-later",
+      "sha256": "cca0d0c8f60353faccc5ad40405240014e4a7ccc8b1c6ca9f4626aef3097d26e",
+      "size": 10267655
+    },
+    {
+      "name": "mingw-w64-gmp-6.3.0-2.src.tar.zst",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-gmp-6.3.0-2.src.tar.zst",
+      "license": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+      "sha256": "f288f944fd9609db220bcf6a8dd0703a5674eeb906ef35eb8485bb8192135994",
+      "size": 2097066
+    },
+    {
+      "name": "mingw-w64-libffi-3.5.2-1.src.tar.zst",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-libffi-3.5.2-1.src.tar.zst",
+      "license": "MIT",
+      "sha256": "bfe3f7d5bf9b09ab22e42ccd527d1a5a94277547b04524177a1c46e1cd930172",
+      "size": 1423649
+    },
+    {
+      "name": "mingw-w64-libiconv-1.19-1.src.tar.zst",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-libiconv-1.19-1.src.tar.zst",
+      "license": "LGPL-2.1-or-later",
+      "sha256": "74428280c17094da5b702c29b2e1a0abae59556ea5dfdd65705cc8ccc1e000fb",
+      "size": 5131029
+    },
+    {
+      "name": "mingw-w64-libtasn1-4.21.0-1.src.tar.zst",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-libtasn1-4.21.0-1.src.tar.zst",
+      "license": "LGPL-2.1-or-later",
+      "sha256": "c626129c5131eef0a45c736274f0844747605a105161cc0f7d39f6e1c70ed0ff",
+      "size": 1732161
+    },
+    {
+      "name": "mingw-w64-nettle-3.10.2-1.src.tar.zst",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-nettle-3.10.2-1.src.tar.zst",
+      "license": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+      "sha256": "ac55da91cbd839213c09fc6f5ddbce410569d084a9a929c3aef3afdb5db2f5a6",
+      "size": 2644814
+    },
+    {
+      "name": "mingw-w64-p11-kit-0.26.2-1.src.tar.zst",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-p11-kit-0.26.2-1.src.tar.zst",
+      "license": "BSD-3-Clause",
+      "sha256": "e4d117e5f558e70d9eb5e830406b96c9bbf0de03ce193bfad47fda4b19fb3086",
+      "size": 1081529
+    },
+    {
+      "name": "mingw-w64-libgpg-error-1.61-1.src.tar.zst",
+      "url": "https://repo.msys2.org/mingw/sources/mingw-w64-libgpg-error-1.61-1.src.tar.zst",
+      "license": "LGPL-2.1-or-later",
+      "sha256": "5e2f21860d5022e704bc5492362c5a861751adf38c4eab9b50f4ab2eaf389aa3",
+      "size": 1128121
+    },
+    {
+      "name": "gnutls-3.8.13.tar.xz",
+      "url": "https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-3.8.13.tar.xz",
+      "license": "LGPL-2.1-or-later",
+      "sha256": "ffed8ec1bf09c2426d4f14aae377de4753b53e537d685e604e99a8b16ca9c97e",
+      "size": 7275324
+    },
+    {
+      "name": "libgcrypt-1.12.2.tar.bz2",
+      "url": "https://www.gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.12.2.tar.bz2",
+      "license": "LGPL-2.1-or-later",
+      "sha256": "7ce33c2492221a0436f96a8500215e9f3e3dcb5fd26a757cd415e7a843babd5e",
+      "size": 4441855
+    },
+    {
+      "name": "brotli-v1.2.0.tar.gz",
+      "url": "https://codeload.github.com/google/brotli/tar.gz/refs/tags/v1.2.0",
+      "license": "MIT",
+      "sha256": "816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec",
+      "size": 646315
+    },
+    {
+      "name": "cares-v1.34.6.tar.gz",
+      "url": "https://codeload.github.com/c-ares/c-ares/tar.gz/refs/tags/v1.34.6",
+      "license": "MIT",
+      "sha256": "4358939ff800b13b92f37d5fdda003718101faedfbdee792d6b79ddc1a53d890",
+      "size": 588396
+    },
+    {
+      "name": "lz4-v1.10.0.tar.gz",
+      "url": "https://codeload.github.com/lz4/lz4/tar.gz/refs/tags/v1.10.0",
+      "license": "BSD-2-Clause",
+      "sha256": "537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b",
+      "size": 387114
+    },
+    {
+      "name": "nghttp2-v1.65.0.tar.gz",
+      "url": "https://codeload.github.com/nghttp2/nghttp2/tar.gz/refs/tags/v1.65.0",
+      "license": "MIT",
+      "sha256": "bcf08112bd583f8543776d086dcdede159b87e1261a36e6ae1d931c812a3ca70",
+      "size": 1046616
+    },
+    {
+      "name": "nghttp3-v1.8.0.tar.gz",
+      "url": "https://codeload.github.com/ngtcp2/nghttp3/tar.gz/refs/tags/v1.8.0",
+      "license": "MIT",
+      "sha256": "d2cac7cd17966c915f87fa6b823963db4b555397e43c69d16d289765af7ab442",
+      "size": 193150
+    },
+    {
+      "name": "snappy-1.2.1.tar.gz",
+      "url": "https://codeload.github.com/google/snappy/tar.gz/refs/tags/1.2.1",
+      "license": "BSD-3-Clause",
+      "sha256": "736aeb64d86566d2236ddffa2865ee5d7a82d26c9016b36218fcc27ea4f09f86",
+      "size": 1108761
+    },
+    {
+      "name": "xxhash-v0.8.3.tar.gz",
+      "url": "https://codeload.github.com/Cyan4973/xxHash/tar.gz/refs/tags/v0.8.3",
+      "license": "BSD-2-Clause",
+      "sha256": "aae608dfe8213dfd05d909a57718ef82f30722c392344583d3f39050c7f29a80",
+      "size": 1147630
+    },
+    {
+      "name": "zlib-ng-2.2.3.tar.gz",
+      "url": "https://codeload.github.com/zlib-ng/zlib-ng/tar.gz/refs/tags/2.2.3",
+      "license": "Zlib",
+      "sha256": "f2fb245c35082fe9ea7a22b332730f63cf1d42f04d84fe48294207d033cba4dd",
+      "size": 2413008
+    },
+    {
+      "name": "zstd-v1.5.7.tar.gz",
+      "url": "https://codeload.github.com/facebook/zstd/tar.gz/refs/tags/v1.5.7",
+      "license": "BSD-3-Clause OR GPL-2.0-only",
+      "sha256": "37d7284556b20954e56e1ca85b80226768902e2edabd3b649e9e72c0c9012ee3",
+      "size": 2451884
+    },
+    {
+      "name": "krb5-1.22.1.tar.gz",
+      "url": "https://web.mit.edu/kerberos/dist/krb5/1.22/krb5-1.22.1.tar.gz",
+      "license": "MIT and BSD notices",
+      "sha256": "1a8832b8cad923ebbf1394f67e2efcf41e3a49f460285a66e35adec8fa0053af",
+      "size": 8747101
+    },
+    {
+      "name": "lua-5.4.6.tar.gz",
+      "url": "https://www.lua.org/ftp/lua-5.4.6.tar.gz",
+      "license": "MIT",
+      "sha256": "7d5ea1b9cb6aa0b59ca3dde1c6adcb57ef83a1ba8e5432c0ecd06bf439b3ad88",
+      "size": 363329
+    },
+    {
+      "name": "libsmi-0.5.0.tar.gz",
+      "url": "https://www.ibr.cs.tu-bs.de/projects/libsmi/download/libsmi-0.5.0.tar.gz",
+      "license": "BSD notices",
+      "sha256": "f21accdadb1bb328ea3f8a13fc34d715baac6e2db66065898346322c725754d3",
+      "size": 4798883
+    },
+    {
+      "name": "libiconv-1.18.tar.gz",
+      "url": "https://ftp.gnu.org/gnu/libiconv/libiconv-1.18.tar.gz",
+      "license": "vcpkg copyright files and upstream source notices",
+      "sha256": "3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8",
+      "size": 5822590
+    },
+    {
+      "name": "libxml2-v2.15.1.tar.gz",
+      "url": "https://codeload.github.com/GNOME/libxml2/tar.gz/v2.15.1",
+      "license": "vcpkg copyright files and upstream source notices",
+      "sha256": "23b1ebd74cc562cd592cd2618c2bd88dc06fa0dfdbcd56e03cb26d6ff6b7e373",
+      "size": 2952276
+    },
+    {
+      "name": "gettext-0.22.5.tar.gz",
+      "url": "https://ftp.gnu.org/gnu/gettext/gettext-0.22.5.tar.gz",
+      "license": "vcpkg copyright files and upstream source notices",
+      "sha256": "ec1705b1e969b83a9f073144ec806151db88127f5e40fe5a94cb6c8fa48996a0",
+      "size": 26861674
+    },
+    {
+      "name": "glib-2.86.3.tar.xz",
+      "url": "https://download.gnome.org/sources/glib/2.86/glib-2.86.3.tar.xz",
+      "license": "vcpkg copyright files and upstream source notices",
+      "sha256": "b3211d8d34b9df5dca05787ef0ad5d7ca75dec998b970e1aab0001d229977c65",
+      "size": 5674820
+    },
+    {
+      "name": "dirent-1.26.tar.gz",
+      "url": "https://codeload.github.com/tronkko/dirent/tar.gz/1.26",
+      "license": "vcpkg copyright files and upstream source notices",
+      "sha256": "a91662ee5243d2dae5aee7ed8527f95097afda517cc5cc7ca2699648a74a419c",
+      "size": 33543
+    },
+    {
+      "name": "zlib-v1.3.1.tar.gz",
+      "url": "https://codeload.github.com/madler/zlib/tar.gz/v1.3.1",
+      "license": "vcpkg copyright files and upstream source notices",
+      "sha256": "17e88863f3600672ab49182f217281b6fc4d3c762bde361935e436a95214d05c",
+      "size": 1572744
+    },
+    {
+      "name": "pcre2-pcre2-10.47.tar.gz",
+      "url": "https://codeload.github.com/PCRE2Project/pcre2/tar.gz/pcre2-10.47",
+      "license": "vcpkg copyright files and upstream source notices",
+      "sha256": "409c443549b13b216da40049850a32f3e6c57d4224ab11553ab5a786878a158e",
+      "size": 3354275
+    },
+    {
+      "name": "sljit-45f910b78c6605ebf5b53d3ec7cb00f2312fe417.tar.gz",
+      "url": "https://codeload.github.com/zherczeg/sljit/tar.gz/45f910b78c6605ebf5b53d3ec7cb00f2312fe417",
+      "license": "vcpkg copyright files and upstream source notices",
+      "sha256": "ea5a6fb45e050f813f070ecaa098fe0389068beea61ac7dce5410a0c642ccfa3",
+      "size": 1437951
+    },
+    {
+      "name": "libffi-3.5.2.tar.gz",
+      "url": "https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz",
+      "license": "vcpkg copyright files and upstream source notices",
+      "sha256": "f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc",
+      "size": 1423124
+    }
+  ]
+}

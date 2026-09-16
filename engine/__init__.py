@@ -1,3 +1,5 @@
 """EvidenceMesh deterministic forensic analysis engine."""
 
-__version__ = "0.3.0"
+from engine.version import VERSION
+
+__version__ = VERSION

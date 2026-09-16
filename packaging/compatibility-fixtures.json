@@ -1,0 +1,32 @@
+[
+  {
+    "file": "amcache-new.hve",
+    "url": "https://media.githubusercontent.com/media/fox-it/dissect.target/main/tests/_data/plugins/os/windows/amcache/amcache-new.hve",
+    "sha256": "eb6a90ba96c21535ede2520ca9a9e1ac32ad1e2a4b3384860f8a11039fdc6713",
+    "size": 1835008
+  },
+  {
+    "file": "amcache-old.hve",
+    "url": "https://media.githubusercontent.com/media/fox-it/dissect.target/main/tests/_data/plugins/os/windows/amcache/amcache-old.hve",
+    "sha256": "24f1dea7a84b3fb72b8e5c20f1517f8d28b2c42fe7a86bc3d6ec530100be1090",
+    "size": 1310720
+  },
+  {
+    "file": "Security.evtx",
+    "url": "https://media.githubusercontent.com/media/fox-it/dissect.target/main/tests/_data/plugins/os/windows/log/evtx/Security.evtx",
+    "sha256": "05a9f83c0695d65358a4a025f61d7587df12c954eae44c35a979a3c768ed75bd",
+    "size": 1118208
+  },
+  {
+    "file": "TestLogX.evtx",
+    "url": "https://media.githubusercontent.com/media/fox-it/dissect.target/main/tests/_data/plugins/os/windows/log/evtx/TestLogX.evtx",
+    "sha256": "7bba434a7a3667433d5741e3fe323ac251c4cbde42d66ec548ef9fbf7a8c5735",
+    "size": 69632
+  },
+  {
+    "file": "MPCMDRUN.EXE-962E6200.pf",
+    "url": "https://media.githubusercontent.com/media/fox-it/dissect.target/main/tests/_data/plugins/os/windows/prefetch/MPCMDRUN.EXE-962E6200.pf",
+    "sha256": "7f8a9fc9d51994de3316efb61303550be73a5de27c4da10e4f7287f394556f07",
+    "size": 8156
+  }
+]

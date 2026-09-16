@@ -12,6 +12,10 @@ class RunStatus(StrEnum):
     FAILED = "FAILED"
     UNAVAILABLE = "UNAVAILABLE"
     SKIPPED = "SKIPPED"
+    TIMEOUT = "TIMEOUT"
+    CANCELLED = "CANCELLED"
+    RUNNING = "RUNNING"
+    PENDING = "PENDING"
 
 
 class ArtifactContext(Model):
@@ -24,6 +28,7 @@ class ArtifactContext(Model):
     recovered_directory: str | None = None
     mount_point: str | None = None
     logical_path: str | None = None
+    tls_keylog_file: str | None = None
 
 
 class ParserRun(Model):

@@ -1,94 +1,133 @@
-name: Build EvidenceMesh Windows
+name: Build and verify EvidenceMesh Windows
 
 on:
   workflow_dispatch:
-
   push:
-    tags:
-      - "v*"
+    branches: ["codex/v0.4.0", "release/v*"]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build-windows:
-    name: Build Windows Installer
+    name: Windows installer and installed application E2E
     runs-on: windows-latest
-
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python 3.12
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install Python dependencies
-        shell: pwsh
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-          pip install pyinstaller
-
-      - name: Run Python tests
-        shell: pwsh
-        run: |
-          pytest -q
-
-      - name: Build EvidenceMesh backend
-        shell: pwsh
-        run: |
-          pyinstaller `
-            --noconfirm `
-            --clean `
-            --onedir `
-            --name evidencemesh-backend `
-            --collect-data samples `
-            --collect-data schemas `
-            --collect-data tzdata `
-            --collect-all volatility3 `
-            --collect-all Evtx `
-            --collect-all dissect.ntfs `
-            --collect-all dissect.regf `
-            api/launcher.py
-
-      - name: Verify backend executable exists
-        shell: pwsh
-        run: |
-          if (!(Test-Path "dist/evidencemesh-backend/evidencemesh-backend.exe")) {
-            throw "Backend executable was not created"
-          }
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: desktop/package-lock.json
-
-      - name: Install Electron dependencies
-        working-directory: desktop
-        run: npm ci
-
+      - name: Install build dependencies
+        run: |
+          python -m pip install -r requirements.lock -r packaging/requirements-build.txt -e ".[dev]"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          npm ci --prefix desktop
+      - name: Check synchronized versions
+        run: python scripts/sync_version.py --check
+      - name: Acquire and verify offline TShark
+        run: |
+          python scripts/acquire_tshark.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          "$pwd\dist\tshark" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Prepare inert and public compatibility fixtures
+        run: python scripts/prepare_windows_fixtures.py
+      - name: Python regression and format tests
+        run: python -m pytest -q --junitxml=data/pytest-windows.xml
+      - name: Ruff checks
+        run: |
+          python -m ruff check .
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -m ruff format --check .
+      - name: Collect corresponding sources and licenses
+        run: python scripts/package_sources.py
+      - name: Build frozen Python backend
+        run: pyinstaller --noconfirm --clean packaging/backend.spec
+      - name: Frozen backend health, data, plugins and shutdown
+        timeout-minutes: 5
+        run: python scripts/backend_smoke.py dist/evidencemesh-backend/evidencemesh-backend.exe --tshark dist/tshark/tshark.exe
       - name: TypeScript check
         working-directory: desktop
         run: npm run typecheck
-
-      - name: Build Electron
+      - name: Build Windows NSIS installer
         working-directory: desktop
-        run: npm run build
-
-      - name: Build Windows installer
-        working-directory: desktop
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
         run: npm run package:win
-
-      - name: Show generated files
-        shell: pwsh
-        run: |
-          Get-ChildItem -Recurse desktop/release-installer
-
-      - name: Upload EvidenceMesh installer
+      - name: Silent install, actual installed app, parsers, quit and uninstall
+        timeout-minutes: 15
+        run: node desktop/tests/installed-windows.cjs
+      - name: Assemble release and SHA-256 manifest
+        run: python scripts/assemble_release.py
+      - name: Upload tested release assets
         uses: actions/upload-artifact@v4
         with:
           name: EvidenceMesh-Windows-x64
-          path: |
-            desktop/release-installer/*.exe
+          path: dist/release-assets/*
           if-no-files-found: error
+      - name: Upload validation evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EvidenceMesh-Windows-validation
+          path: |
+            data/windows-e2e/
+            data/pytest-windows.xml
+            build/backend/warn-backend.txt
+          if-no-files-found: warn
+
+  release:
+    name: Publish only tested installer and corresponding source
+    needs: build-windows
+    if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/heads/release/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: EvidenceMesh-Windows-x64
+          path: release-assets
+      - name: Verify and publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n' < VERSION)"
+          tag="v${version}"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            test "$GITHUB_REF_NAME" = "$tag"
+          else
+            test "$GITHUB_REF_NAME" = "release/$tag"
+            if git rev-parse "$tag" >/dev/null 2>&1; then
+              test "$(git rev-parse "$tag^{commit}")" = "$GITHUB_SHA"
+            else
+              git tag "$tag" "$GITHUB_SHA"
+              git push origin "refs/tags/$tag"
+            fi
+          fi
+          (cd release-assets && sha256sum --check SHA256SUMS.txt)
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --verify-tag --draft --title "EvidenceMesh $tag" --notes-file docs/RELEASE_NOTES_v04.md
+          fi
+          test "$(gh release view "$tag" --json isDraft --jq .isDraft)" = true
+          gh release upload "$tag" release-assets/* --clobber
+          gh release edit "$tag" --draft=false --latest

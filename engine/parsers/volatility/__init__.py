@@ -1,13 +1,14 @@
 from pathlib import Path
 
 from engine.parsers.volatility.rows import ImportContext, VolatilityImportError
+from engine.version import VERSION
 
 
 class VolatilityParser:
     """Configured single-export Parser protocol facade; use Adapter for multi-plugin merging."""
 
     name = "volatility3"
-    version = "0.2.0"
+    version = VERSION
 
     def __init__(self, plugin: str | None = None, context: ImportContext | None = None):
         self.plugin, self.context = plugin, context

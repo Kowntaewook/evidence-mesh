@@ -1,5 +1,6 @@
 """Case-level import orchestration. Adapters remain independent of correlation."""
 
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -38,7 +39,7 @@ class ImportService:
                     plugin = request.format or filename_plugin(path.stem)
                     batch = adapter.load_exports([(plugin, path)], request.plugins)
             elif source == Source.NETWORK:
-                batch = PcapAdapter(request.context).load_file(path)
+                batch = PcapAdapter(request.context, workspace=database.parent).load_file(path)
             else:
                 artifact = request.format if kind == "disk" else kind
                 mft = self.repository.query_events(case_id, artifact_type="$MFT") if artifact == "usn" else []
@@ -66,7 +67,16 @@ class ImportService:
                     )
                 ]
             )
-        return self.repository.import_batch(case_id, batch)
+        report = self.repository.import_batch(case_id, batch)
+        logging.getLogger("evidencemesh").info(
+            "parser import case=%s kind=%s status=%s events=%d runs=%d",
+            case_id,
+            kind,
+            report.status,
+            report.imported,
+            len(report.runs),
+        )
+        return report
 
     def import_case(self, case_id: str, path: Path, context: ArtifactContext | None = None):
         path = Path(path).resolve()

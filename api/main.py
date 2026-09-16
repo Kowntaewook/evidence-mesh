@@ -1,4 +1,5 @@
 import os
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Literal
@@ -7,15 +8,22 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import Field
 
+from engine.collectors.disk.images import DiskImageAdapter
 from engine.ingestion.service import ImportService
+from engine.memory_jobs import MemoryJobs
 from engine.normalization import normalize_events
 from engine.parsers.volatility.registry import discover_plugins
+from engine.runtime import dependency_status, volatility_command
 from engine.sample import DEFAULT_SAMPLE_DIR, load_sample
 from engine.service import AnalysisService
 from engine.storage import SQLiteRepository
 from engine.storage.base import AnalysisRequiredError, ConflictError, NotFoundError
+from engine.storage.views import bounded_graph, event_page
+from engine.version import VERSION
+from schemas.disk_images import DiskImageRequest
 from schemas.events import Event, Source, Timestamp
 from schemas.imports import ImportReport, ImportRequest, ParserRun
+from schemas.jobs import MemoryJobRequest
 from schemas.results import (
     AnalysisRequest,
     AnalysisResult,
@@ -33,14 +41,28 @@ def create_app(database_path: str | Path | None = None) -> FastAPI:
         app.state.repository = SQLiteRepository(
             database_path or os.environ.get("EVIDENCEMESH_DB", "data/evidencemesh.sqlite3")
         )
-        yield
+        app.state.memory_jobs = MemoryJobs(
+            app.state.repository,
+            Path(database_path).resolve().parent if database_path else None,
+        )
+        try:
+            yield
+        finally:
+            app.state.memory_jobs.close()
 
     app = FastAPI(
         title="EvidenceMesh",
-        version="0.3.0",
+        version=VERSION,
         lifespan=lifespan,
         description="Cross-source forensic correlation engine for memory, disk, and network evidence.",
     )
+
+    @app.middleware("http")
+    async def local_session(request: Request, call_next):
+        token = os.environ.get("EVIDENCEMESH_SESSION_TOKEN")
+        if token and not secrets.compare_digest(request.headers.get("x-evidencemesh-token", ""), token):
+            return JSONResponse(status_code=401, content={"detail": "Local application session required"})
+        return await call_next(request)
 
     @app.exception_handler(NotFoundError)
     async def not_found(request, exc):
@@ -59,7 +81,14 @@ def create_app(database_path: str | Path | None = None) -> FastAPI:
     def health(request: Request):
         with request.app.state.repository.connection() as db:
             db.execute("SELECT 1").fetchone()
-        return {"status": "ok", "version": "0.3.0"}
+        result = {"status": "ok", "version": VERSION}
+        if instance := os.environ.get("EVIDENCEMESH_INSTANCE"):
+            result["instance"] = instance
+        return result
+
+    @app.get("/runtime/dependencies")
+    def dependencies():
+        return dependency_status()
 
     @app.post("/cases", response_model=Case, status_code=201)
     def create_case(body: CaseCreate, request: Request):
@@ -119,6 +148,19 @@ def create_app(database_path: str | Path | None = None) -> FastAPI:
             offset=offset,
         )
 
+    @app.get("/cases/{case_id}/event-page")
+    def paged_events(
+        case_id: str,
+        request: Request,
+        view: str = "evidence",
+        query: Annotated[str, Query(max_length=500)] = "",
+        limit: Annotated[int, Query(ge=1, le=500)] = 100,
+        offset: Annotated[int, Query(ge=0)] = 0,
+        source: Source | None = None,
+        category: str | None = None,
+    ):
+        return event_page(request.app.state.repository, case_id, view, query, limit, offset, source, category)
+
     @app.post("/cases/{case_id}/import/{kind}", response_model=ImportReport)
     def import_evidence(case_id: str, kind: str, body: ImportRequest, request: Request):
         if kind not in {
@@ -138,7 +180,42 @@ def create_app(database_path: str | Path | None = None) -> FastAPI:
 
     @app.get("/parsers/volatility")
     def plugins():
-        return discover_plugins()
+        return discover_plugins(command=volatility_command())
+
+    @app.post("/cases/{case_id}/disk-images/inspect")
+    def inspect_disk_image(case_id: str, body: DiskImageRequest, request: Request):
+        request.app.state.repository.get_case(case_id)
+        return DiskImageAdapter(body.context).inspect(body.path)
+
+    @app.post("/cases/{case_id}/disk-images/import", response_model=ImportReport)
+    def import_disk_image(case_id: str, body: DiskImageRequest, request: Request):
+        repository = request.app.state.repository
+        repository.get_case(case_id)
+        workspace = Path(database_path).resolve().parent if database_path else None
+        batch = DiskImageAdapter(body.context, workspace).load_file(body.path, body.artifacts, body.volumes)
+        return repository.import_batch(case_id, batch)
+
+    @app.post("/cases/{case_id}/memory-jobs", status_code=202)
+    def start_memory_job(case_id: str, body: MemoryJobRequest, request: Request):
+        return request.app.state.memory_jobs.start(case_id, body)
+
+    @app.get("/cases/{case_id}/memory-jobs")
+    def memory_jobs(case_id: str, request: Request):
+        return request.app.state.memory_jobs.list(case_id)
+
+    @app.get("/cases/{case_id}/memory-jobs/{job_id}")
+    def memory_job(case_id: str, job_id: str, request: Request):
+        try:
+            return request.app.state.memory_jobs.get(case_id, job_id)
+        except KeyError as exc:
+            raise HTTPException(404, str(exc)) from exc
+
+    @app.post("/cases/{case_id}/memory-jobs/{job_id}/cancel")
+    def cancel_memory_job(case_id: str, job_id: str, request: Request):
+        try:
+            return request.app.state.memory_jobs.cancel(case_id, job_id)
+        except KeyError as exc:
+            raise HTTPException(404, str(exc)) from exc
 
     @app.get("/cases/{case_id}/parser-runs", response_model=list[ParserRun])
     def parser_runs(case_id: str, request: Request):
@@ -188,7 +265,25 @@ def create_app(database_path: str | Path | None = None) -> FastAPI:
         return AnalysisService(request.app.state.repository).view(case_id, root_event_id)[1]
 
     @app.get("/cases/{case_id}/graph", response_model=IncidentGraph)
-    def graph(case_id: str, request: Request, root_event_id: str | None = None):
+    def graph(
+        case_id: str,
+        request: Request,
+        root_event_id: str | None = None,
+        depth: Annotated[int, Query(ge=0, le=8)] = 2,
+        limit: Annotated[int | None, Query(ge=1, le=2000)] = None,
+        min_score: Annotated[int, Query(ge=0, le=100)] = 0,
+        node_types: str | None = None,
+    ):
+        if limit is not None or node_types or min_score or depth != 2:
+            return bounded_graph(
+                request.app.state.repository,
+                case_id,
+                root_event_id,
+                depth,
+                limit or 500,
+                min_score,
+                node_types.split(",") if node_types else None,
+            )
         return AnalysisService(request.app.state.repository).graph(case_id, root_event_id)
 
     @app.get("/cases/{case_id}/timeline", response_model=Timeline)

@@ -1,8 +1,8 @@
 # PCAP / PCAPNG adapter
 
-`PcapAdapter` in [pcap.py](../engine/collectors/network/pcap.py) uses installed **tshark** offline. Both PCAP and PCAPNG are decoded as actual binary captures. No capture interface is opened.
+`PcapAdapter` in [pcap.py](../engine/collectors/network/pcap.py) uses **tshark** offline. Both PCAP and PCAPNG are decoded as actual binary captures. No capture interface is opened.
 
-Install tshark separately (`apt-get install tshark` on Debian-family systems, or the appropriate Wireshark installation for the host). The adapter locates it on PATH or accepts an explicit executable. The validated environment used tshark **4.6.6**; other versions must expose the requested fields.
+The Windows packaging definition includes TShark **4.6.8** and its required DLLs/data. Electron supplies its absolute path through `EVIDENCEMESH_TSHARK`; discovery checks this bundled path before system PATH. An explicitly configured executable takes precedence. Missing both produces UNAVAILABLE. Development Linux tests use TShark **4.6.6**. Actual installed Windows execution is still pending; binary acquisition alone is not an execution result.
 
 ## Decoder execution and errors
 
@@ -48,4 +48,29 @@ Actual generated 13-packet PCAP and PCAPNG each produce 17 Events. Normal/malfor
 
 Two pre-existing workspace captures were read separately: 20,000 packets → 39,929 Events, and 2,826 packets → 7 flow Events. Their collection history is unknown; this validates decode compatibility, not case interpretation. The first capture's index built 40,691 candidates versus 797,142,556 possible pairs.
 
-No TLS decryption, encrypted HTTP interpretation, HTTP body recovery/download-to-file causation, live acquisition, QUIC-specific normalization, NAT reconstruction or clock-skew correction is implemented. Non-IP and unsupported protocols remain outside normalized support. See the [tshark manual](https://www.wireshark.org/docs/man-pages/tshark) and [TLS fields](https://www.wireshark.org/docs/dfref/t/tls.html) for the external decoder contract.
+## HTTP bodies and supplied TLS secrets
+
+TCP and HTTP reassembly/dechunking are enabled. Complete supported request/response
+bodies are written under `derived/network/<capture-sha256>/bodies/<body-sha256>.bin`.
+The existing HTTP event is enriched with the content SHA-256, size, recovered path
+and a File identity. This enables the existing `same_sha256` correlation with an
+independently imported disk file; matching bytes alone do not prove causation.
+Content encoding is preserved rather than silently decompressed. Recovery is
+bounded at 32 MiB per body; ambiguous multiple bodies or incomplete length checks
+produce warnings rather than invented complete files. Raw capture provenance
+retains capture hash/frame references and excludes bulky duplicate body hex.
+
+The optional `ArtifactContext.tls_keylog_file` supplies an existing key log (up to
+64 MiB) to TShark's `tls.keylog_file` option. The UI has a native key-file picker.
+Without keys, TLS stays `Encrypted - metadata only`. It is labeled
+`Decrypted using supplied key log` only after actual decoded application data is
+observed. Supplying a wrong or unrelated key does not itself prove decryption.
+
+Nine new tests use actual TShark: split Content-Length/chunked request and response
+bodies in PCAP/PCAPNG, content hashes, and a real TLS 1.2 handshake created offline
+with SSL MemoryBIO. The encrypted capture yields no HTTP body without its key and
+the expected bytes with its supplied key. No network service is contacted.
+
+Live acquisition, QUIC-specific normalization, NAT reconstruction and clock-skew
+correction remain outside support. See the [tshark manual](https://www.wireshark.org/docs/man-pages/tshark)
+and [TLS fields](https://www.wireshark.org/docs/dfref/t/tls.html) for the decoder contract.

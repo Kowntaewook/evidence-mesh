@@ -23,6 +23,7 @@ from engine.parsers.volatility.rows import (
     string,
     timestamp,
 )
+from engine.version import VERSION
 from schemas.events import Event, Process, Provenance
 
 
@@ -56,7 +57,7 @@ class ProcessRecord:
 
 class Volatility3Adapter:
     name = "Volatility3Adapter"
-    version = "0.2.0"
+    version = VERSION
 
     def __init__(self, context: ImportContext):
         self.context = context

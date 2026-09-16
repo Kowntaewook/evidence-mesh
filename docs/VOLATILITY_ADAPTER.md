@@ -2,9 +2,9 @@
 
 ## Input and compatibility
 
-The v0.3 entry point is `MemoryImportAdapter` in `engine/collectors/memory/extended.py`, used by CLI, API and Desktop imports. It consumes **existing JSON exports**. It does not launch plugins against a raw image or run dumpfiles extraction.
+The structured-export entry point is `MemoryImportAdapter` in `engine/collectors/memory/extended.py`, used by CLI, API and Desktop imports. It consumes **existing JSON exports**. In v0.4, the separate MemoryJobs service runs raw-image plugins and feeds their outputs into this unchanged adapter contract; see [RAW_MEMORY_ANALYSIS.md](RAW_MEMORY_ANALYSIS.md).
 
-The original five-plugin `Volatility3Adapter` and its 14-row → 8-Event regression remain intact. The new adapter composes it with 16 additional parsers. Existing parser identity/version 0.2.0 in legacy row provenance describes that preserved reader, not the installed Volatility version.
+The original five-plugin `Volatility3Adapter` and its 14-row → 8-Event regression remain intact. The new adapter composes it with 16 additional parsers. Parser versions now use the synchronized application VERSION; the separately recorded tool version identifies Volatility.
 
 Supported JSON forms include flat row arrays and the Volatility JSON renderer's nested `__children` trees. Parent context is inherited only where the plugin format establishes it. Field aliases, numeric/hex values, aware timestamps and optional nulls are validated. Duplicate JSON keys, nonfinite values, conflicting aliases and malformed rows are errors.
 
@@ -65,4 +65,4 @@ Supply the actual acquisition/tool facts. Tool version may be omitted when unkno
 
 Original five-plugin tests remain byte-for-byte unchanged. Each additional parser has normal, malformed and optional-field tests, plus combined ownership/provenance/recovery tests. An actual installed Volatility JsonRenderer was exercised with a synthetic TreeGrid to check nested/int/hex/time/null serialization. The renderer contract is documented in the [official Volatility source](https://volatility3.readthedocs.io/en/latest/_modules/volatility3/cli/text_renderer.html).
 
-**NOT VALIDATED WITH REAL IMAGE**: no raw memory image was available. Synthetic plugin rows and actual renderer compatibility do not establish real-image plugin compatibility.
+**NOT VALIDATED WITH REAL MEMORY IMAGE**: real-image validation is explicitly outside this release task. Synthetic plugin rows and actual renderer compatibility do not establish real-image plugin compatibility.

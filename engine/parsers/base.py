@@ -2,6 +2,8 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Protocol
 
+from engine.version import VERSION
+
 
 class Parser(Protocol):
     name: str
@@ -24,7 +26,7 @@ class ArtifactParser:
     """Configured Parser facade. Missing acquisition context never invents provenance."""
 
     name = "artifact"
-    version = "0.3.0"
+    version = VERSION
     kind = ""
 
     def __init__(self, context=None):

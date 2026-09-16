@@ -85,50 +85,72 @@ def read_mft(path):
 
 
 def read_usn(path):
-    try:
-        from dissect.ntfs.usnjrnl import UsnJrnl, UsnRecord
-        from dissect.ntfs.util import segment_reference
-    except ImportError as exc:
-        raise DependencyUnavailable("Raw USN requires dissect.ntfs") from exc
+    """Decode distinct USN layouts without truncating 128-bit file identifiers."""
     rows = []
     with path.open("rb") as stream:
         size, offset = path.stat().st_size, 0
-        journal = UsnJrnl(stream)
         while offset < size:
             stream.seek(offset)
             header = stream.read(8)
             if header == b"\0" * 8:
-                offset += 8
+                padding = header + stream.read(min(65528, size - offset - 8))
+                first = next((i for i, value in enumerate(padding) if value), None)
+                offset += len(padding) if first is None else first // 8 * 8
                 continue
             if len(header) < 8:
                 raise ArtifactError(f"Truncated USN header at {offset}")
-            length, version, _ = struct.unpack("<IHH", header)
-            if length < 60 or length % 8 or offset + length > size:
+            length, version, minor = struct.unpack("<IHH", header)
+            if length < 8 or length % 8 or offset + length > size or length > 16 * 1024 * 1024:
                 raise ArtifactError(f"Invalid USN record length at {offset}")
-            if version != 2:
-                raise DependencyUnavailable(
-                    f"Raw USN version {version} is not supported; provide a documented export"
+            if version not in {2, 3, 4} or minor:
+                raise DependencyUnavailable(f"Unsupported USN layout {version}.{minor}")
+            minimum = {2: 60, 3: 76, 4: 64}[version]
+            if length < minimum:
+                raise ArtifactError(f"Invalid USN record length at {offset}")
+            data = header + stream.read(length - 8)
+            width = 8 if version == 2 else 16
+            reference = int.from_bytes(data[8 : 8 + width], "little")
+            parent = int.from_bytes(data[8 + width : 8 + 2 * width], "little")
+            position = 8 + 2 * width
+            usn = struct.unpack_from("<q", data, position)[0]
+            if usn < 0:
+                raise ArtifactError("Negative USN sequence number")
+            row = {"MajorVersion": version, "MinorVersion": minor, "USN": usn, "SourceOffset": offset}
+            if version == 2:
+                row.update(FileReferenceNumber=str(reference), ParentFileReferenceNumber=str(parent))
+            else:
+                row.update(FileReference128=f"0x{reference:032x}", ParentReference128=f"0x{parent:032x}")
+            # NTFS-compatible low 64-bit identifiers can be joined; other 128-bit IDs stay opaque.
+            for value, record_key, sequence_key in (
+                (reference, "EntryNumber", "SequenceNumber"),
+                (parent, "ParentEntryNumber", "ParentSequenceNumber"),
+            ):
+                if value < 2**64:
+                    row[record_key], row[sequence_key] = value & ((1 << 48) - 1), value >> 48
+            if version in {2, 3}:
+                timestamp, reason, source_info = struct.unpack_from("<QII", data, position + 8)
+                name_length, name_offset = struct.unpack_from("<HH", data, position + 32)
+                if name_offset < minimum or name_length % 2 or name_offset + name_length > length:
+                    raise ArtifactError(f"USN filename extends outside record at {offset}")
+                row.update(
+                    Timestamp=filetime(timestamp),
+                    Name=data[name_offset : name_offset + name_length].decode("utf-16-le"),
                 )
-            record = UsnRecord(journal, stream, offset)
-            if record.FileNameOffset + record.FileNameLength > length:
-                raise ArtifactError(f"USN filename extends outside record at {offset}")
-            rows.append(
-                (
-                    f"bytes:{offset}",
-                    {
-                        "USN": record.Usn,
-                        "Timestamp": record.timestamp.isoformat(),
-                        "Name": record.filename,
-                        "EntryNumber": segment_reference(record.FileReferenceNumber),
-                        "SequenceNumber": record.FileReferenceNumber.SequenceNumber,
-                        "ParentEntryNumber": segment_reference(record.ParentFileReferenceNumber),
-                        "ParentSequenceNumber": record.ParentFileReferenceNumber.SequenceNumber,
-                        "Reason": int(record.Reason),
-                        "SourceInfo": int(record.SourceInfo),
-                        "SourceOffset": offset,
-                    },
-                )
-            )
+            else:
+                reason, source_info, remaining, count, extent_size = struct.unpack_from("<IIIHH", data, 48)
+                if extent_size != 16:
+                    raise DependencyUnavailable(f"Unsupported USN v4 extent size {extent_size}")
+                if 64 + count * extent_size > length:
+                    raise ArtifactError("USN v4 extents extend outside record")
+                extents = []
+                for index in range(count):
+                    start, extent_length = struct.unpack_from("<qq", data, 64 + index * 16)
+                    if start < 0 or extent_length < 0:
+                        raise ArtifactError("Negative USN v4 extent")
+                    extents.append({"offset": start, "length": extent_length})
+                row.update(Extents=extents, RemainingExtents=remaining)
+            row.update(Reason=reason, SourceInfo=source_info)
+            rows.append((f"bytes:{offset}", row))
             offset += length
     return rows, []
 
@@ -136,11 +158,9 @@ def read_usn(path):
 def read_prefetch(path):
     data = path.read_bytes()
     if data[:3] == b"MAM":
-        if len(data) < 9:
-            raise ArtifactError("Truncated MAM Prefetch")
-        raise DependencyUnavailable(
-            "Compressed MAM Prefetch is not supported by the bounded SCCA reader; use PECmd export"
-        )
+        from engine.collectors.disk.prefetch_compression import decompress_mam
+
+        data = decompress_mam(data)
     if len(data) < 152 or data[4:8] != b"SCCA":
         raise ArtifactError("Invalid or truncated Prefetch SCCA header")
 

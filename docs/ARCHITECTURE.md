@@ -1,4 +1,4 @@
-# EvidenceMesh v0.3 architecture
+# EvidenceMesh v0.4 architecture
 
 EvidenceMesh reads existing evidence and external tool exports, normalizes observations, and builds deterministic correlations. It does not acquire memory, execute recovered content, or call an AI API.
 
@@ -64,6 +64,25 @@ Related evidence follows correlation edges from the selected root. Sharing an IP
 
 The original black/dark-gray/red layout is preserved. Electron main talks to a separate loopback API; preload exposes bounded IPC. Renderer Node access is disabled, context isolation and sandboxing are enabled, navigation is restricted, and evidence strings use textContent. External parsers use argument arrays, timeouts and captured exit/stderr.
 
-Tables render 100 rows per page. Event requests load in 2,000-record chunks, but the complete selected case is still held in renderer memory. Graph display limits are 200 nodes/400 edges with an explicit notice. Backend 100k-event performance does not establish 100k-event UI performance.
+Cases above 2,000 Events use server pages of 100 Events, with bounded incident and graph support; the renderer does not retain the full large case. Graph queries use indexed SQL adjacency with root/depth/node/score/type bounds. Display limits remain 200 nodes/400 edges with an explicit notice. Actual Linux UI 10k/50k/100k smoke tests passed; Windows performance is not yet validated.
 
-The generated Linux ARM64 application requires a separately running Python backend and installed external tools. Python embedding, signed installers, Windows/macOS validation and advanced graph layout remain outside validated support.
+Development still supports a separately running local API. Windows packaging embeds Python, Volatility and offline TShark; Electron manages authenticated dynamic-loopback startup, AppData storage, logging and shutdown. Windows execution is still a required unexecuted gate, currently blocked by GitHub repository write access. Optional signing is configured; macOS/Linux distribution work is outside this release scope.
+
+
+## v0.4 execution and derived evidence
+
+`MemoryJobs` owns a single worker, per-plugin subprocesses, persistent progress,
+explicit cancellation/timeouts and an image/version/options/output-hash cache.
+The frozen launcher dispatches `--volatility` to the bundled CLI; existing export
+normalization receives the result. Windows process trees are contained in a
+kill-on-close Job Object. No real-memory validation is claimed.
+
+`DiskImageAdapter` separates an evidence stream from partition detection and
+NTFS parsing. Originals are opened read-only; selected artifact streams go into
+unique derived workspaces with hash/volume/record lineage before the existing
+artifact adapter runs. E01's stream abstraction currently reports UNAVAILABLE.
+
+HTTP body recovery enriches existing HTTP Events with derived content identity,
+so the existing File rule can correlate actual bytes. A supplied TLS key log is
+passed to TShark, while metadata-only observations remain clearly distinguished.
+The VERSION file synchronizes all application/parser/installer version fields.

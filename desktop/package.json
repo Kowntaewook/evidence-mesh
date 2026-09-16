@@ -1,7 +1,7 @@
 {
   "name": "evidence-mesh-desktop",
   "productName": "EvidenceMesh",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Cross-source forensic correlation engine for memory, disk, and network evidence.",
   "private": true,
   "license": "MIT",
@@ -36,6 +36,14 @@
       {
         "from": "../dist/evidencemesh-backend",
         "to": "backend"
+      },
+      {
+        "from": "../dist/tshark",
+        "to": "tshark"
+      },
+      {
+        "from": "../dist/third-party-licenses",
+        "to": "third-party-licenses"
       }
     ],
     "win": {
@@ -54,7 +62,10 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "EvidenceMesh"
-    }
+      "shortcutName": "EvidenceMesh",
+      "runAfterFinish": false,
+      "deleteAppDataOnUninstall": false
+    },
+    "artifactName": "EvidenceMesh.Setup.${version}.${ext}"
   }
 }

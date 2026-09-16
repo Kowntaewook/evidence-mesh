@@ -240,12 +240,15 @@ class DiskArtifactAdapter:
             resolve(event, set())
 
     def _usn(self, reader, locator, row, index):
-        name = text_value(pick(row, "Name", "FileName", required=True), "Name", True)
+        version = number(pick(row, "MajorVersion"), "MajorVersion") or 2
+        name = text_value(pick(row, "Name", "FileName", required=version != 4), "Name", version != 4)
         file = self._file(row, name)
-        if file["record_number"] is None:
+        if reference128 := pick(row, "FileReference128"):
+            file["file_id128"] = reference128
+        if file["record_number"] is None and not file.get("file_id128"):
             raise ArtifactError("USN requires EntryNumber or FileReferenceNumber")
         usn = number(pick(row, "UpdateSequenceNumber", "USN"), "USN", True)
-        observed = parse_time(pick(row, "UpdateTimestamp", "Timestamp", required=True), self.context)
+        observed = parse_time(pick(row, "UpdateTimestamp", "Timestamp", required=version != 4), self.context)
         flags = reason_flags(pick(row, "UpdateReasons", "Reason", "Reasons", required=True))
         if not flags:
             raise ArtifactError("USN reasons are empty")
@@ -266,19 +269,25 @@ class DiskArtifactAdapter:
             locator,
             row,
             index,
-            event_type,
+            "usn_range_change" if version == 4 else event_type,
             observed,
             file=file,
+            timestamp_semantics="extraction_time" if observed is None else "event_time",
             timestamp_precision=0.0000001,
             journal={
+                "version": version,
+                "extents": row.get("Extents", []),
+                "remaining_extents": row.get("RemainingExtents"),
                 "usn": usn,
                 "reasons": flags,
                 "source_info": str(pick(row, "SourceInfo")) if pick(row, "SourceInfo") is not None else None,
-                "file_reference": str(pick(row, "FileReferenceNumber", "FileReference"))
-                if pick(row, "FileReferenceNumber", "FileReference") is not None
+                "file_reference": str(pick(row, "FileReferenceNumber", "FileReference", "FileReference128"))
+                if pick(row, "FileReferenceNumber", "FileReference", "FileReference128") is not None
                 else None,
-                "parent_reference": str(pick(row, "ParentFileReferenceNumber", "ParentReference"))
-                if pick(row, "ParentFileReferenceNumber", "ParentReference") is not None
+                "parent_reference": str(
+                    pick(row, "ParentFileReferenceNumber", "ParentReference", "ParentReference128")
+                )
+                if pick(row, "ParentFileReferenceNumber", "ParentReference", "ParentReference128") is not None
                 else None,
             },
             attributes={"source_offset": pick(row, "OffsetToData", "SourceOffset", "Offset")},

@@ -84,6 +84,7 @@ class SQLiteRepository:
                 status TEXT NOT NULL, data TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS parser_runs_case ON parser_runs(case_id);
+            CREATE INDEX IF NOT EXISTS correlations_target ON correlations(case_id,target_event);
             CREATE TABLE IF NOT EXISTS correlation_reasons (
                 case_id TEXT NOT NULL, source_event TEXT NOT NULL, target_event TEXT NOT NULL,
                 ordinal INTEGER NOT NULL, rule TEXT NOT NULL, score INTEGER NOT NULL, data TEXT NOT NULL,
@@ -239,7 +240,15 @@ class SQLiteRepository:
         status = (
             "SUCCESS"
             if states == {RunStatus.SUCCESS}
-            else ("PARTIAL" if batch.events else "FAILED" if RunStatus.FAILED in states else "UNAVAILABLE")
+            else (
+                "PARTIAL"
+                if batch.events
+                else "FAILED"
+                if states & {RunStatus.FAILED, RunStatus.TIMEOUT}
+                else "CANCELLED"
+                if RunStatus.CANCELLED in states
+                else "UNAVAILABLE"
+            )
         )
         report = ImportReport(
             import_id=str(uuid4()),

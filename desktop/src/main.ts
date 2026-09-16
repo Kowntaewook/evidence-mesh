@@ -1,22 +1,22 @@
-import { app, BrowserWindow, dialog, ipcMain, session } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, session } from 'electron';
 import { readFile } from 'node:fs/promises';
-import { spawn, type ChildProcess } from 'node:child_process';
+import { Backend } from './backend';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const endpoint = new URL(process.env.EVIDENCEMESH_API ?? 'http://127.0.0.1:8765');
+let endpoint = new URL(process.env.EVIDENCEMESH_API ?? 'http://127.0.0.1:8765');
 if (endpoint.protocol !== 'http:' || !['127.0.0.1', 'localhost', '[::1]'].includes(endpoint.hostname)
     || endpoint.username || endpoint.password || endpoint.pathname !== '/' || endpoint.search || endpoint.hash) {
   throw new Error('EVIDENCEMESH_API must be a local HTTP origin');
 }
 const entry = pathToFileURL(path.join(__dirname, 'index.html')).href;
-const allowedPath = /^\/(health|samples\/load|parsers\/volatility|cases(?:\/[a-zA-Z0-9-]+(?:\/(?:events|correlate|correlations|graph|timeline|processes|files|network|parser-runs|imports|import\/(?:memory|disk|network)))?)?)(?:\?[a-zA-Z0-9_=%&.-]*)?$/;
+const allowedPath = /^\/(health|runtime\/dependencies|samples\/load|parsers\/volatility|cases(?:\/[a-zA-Z0-9-]+(?:\/(?:events|event-page|correlate|correlations|graph|timeline|processes|files|network|parser-runs|imports|disk-images\/(?:inspect|import)|memory-jobs(?:\/[a-zA-Z0-9-]+(?:\/cancel)?)?|import\/(?:memory|disk|network)))?)?)(?:\?[a-zA-Z0-9_=%&.\-+]*)?$/;
 
 async function request(method: string, route: string, body?: unknown): Promise<unknown> {
   if (!['GET', 'POST'].includes(method) || !allowedPath.test(route)) throw new Error('Unsupported API request');
   const response = await fetch(new URL(route, endpoint), {
-    method, headers: { 'Content-Type': 'application/json' },
+    method, headers: { 'Content-Type': 'application/json', ...(backend ? { 'X-EvidenceMesh-Token': backend.token } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(120000),
     redirect: 'error',
   });
@@ -36,56 +36,15 @@ function trusted(event: Electron.IpcMainInvokeEvent): void {
 }
 
 
-let backendProcess: ChildProcess | null = null;
+let backend: Backend | null = null;
+let quitting = false;
 
-function startPackagedBackend(): void {
-  if (!app.isPackaged) return;
-
-  const backendPath = path.join(
-    process.resourcesPath,
-    'backend',
-    'evidencemesh-backend.exe',
-  );
-
-  backendProcess = spawn(backendPath, [], {
-    windowsHide: true,
-    stdio: ['ignore', 'ignore', 'pipe'],
-    env: {
-      ...process.env,
-      EVIDENCEMESH_DB: path.join(
-        app.getPath('userData'),
-        'evidencemesh.sqlite3',
-      ),
-    },
-  });
-
-  backendProcess.stderr?.on('data', (data) => {
-    console.error(`[EvidenceMesh backend] ${data.toString()}`);
-  });
-
-  backendProcess.on('error', (error) => {
-    console.error('Failed to start EvidenceMesh backend:', error);
-  });
-}
-
-async function waitForBackend(): Promise<void> {
-  const healthUrl = new URL('/health', endpoint);
-
-  for (let attempt = 0; attempt < 60; attempt += 1) {
-    try {
-      const response = await fetch(healthUrl, {
-        signal: AbortSignal.timeout(1000),
-      });
-
-      if (response.ok) return;
-    } catch {
-      // Backend may still be starting.
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-
-  throw new Error('EvidenceMesh backend did not become ready');
+async function showFailure(message: string): Promise<void> {
+  const details = message + '\n\nLogs: ' + (backend?.logPath ?? app.getPath('logs'));
+  const result = await dialog.showMessageBox({ type: 'error', title: 'EvidenceMesh could not continue',
+    message: 'The analysis service is unavailable.', detail: details,
+    buttons: ['Copy diagnostic', 'Close'], defaultId: 1, cancelId: 1 });
+  if (result.response === 0) clipboard.writeText(details);
 }
 
 function createWindow(): BrowserWindow {
@@ -95,14 +54,23 @@ function createWindow(): BrowserWindow {
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event) => event.preventDefault());
+  window.webContents.on('render-process-gone', (_event, details) => { void showFailure('The interface stopped: ' + details.reason); });
   void window.loadURL(entry);
   return window;
 }
 
+app.setName('EvidenceMesh');
+app.setPath('userData', process.env.EVIDENCEMESH_USER_DATA ?? path.join(app.getPath('appData'), 'EvidenceMesh'));
+const singleInstance = app.requestSingleInstanceLock();
+if (!singleInstance) app.quit();
+app.on('second-instance', () => { const window = BrowserWindow.getAllWindows()[0]; if (window) { window.restore(); window.focus(); } });
+
 app.whenReady().then(async () => {
-  if (app.isPackaged) {
-    startPackagedBackend();
-    await waitForBackend();
+  if (!singleInstance) return;
+  if (app.isPackaged && process.platform === 'win32') {
+    backend = new Backend(path.join(process.resourcesPath, 'backend', 'evidencemesh-backend.exe'),
+      process.resourcesPath, app.getPath('userData'), (message) => { void showFailure(message); });
+    endpoint = await backend.start();
   }
 
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
@@ -139,7 +107,7 @@ app.whenReady().then(async () => {
           record.source_artifact = { artifact_id: `sha256:${digest}`, kind: 'json_export', path: filename, sha256: digest };
           record.raw_reference = { artifact_id: `sha256:${digest}`, locator: `/${index}` };
         }
-        record.parser ??= { name: 'evidencemesh-desktop-json', version: '0.1.0' };
+        record.parser ??= { name: 'evidencemesh-desktop-json', version: app.getVersion() };
         records.push(record);
       }
     }
@@ -153,13 +121,36 @@ app.whenReady().then(async () => {
     if (choice.canceled || !choice.filePaths[0]) return null;
     return request('POST', `/cases/${caseId}/import/${kind}`, { path: choice.filePaths[0], format, context });
   });
+  ipcMain.handle('memory:analyze', async (event, caseId: string, options: import('./types').MemoryOptions) => {
+    trusted(event);
+    if (!/^[a-zA-Z0-9-]+$/.test(caseId)) throw new Error('Invalid case ID');
+    const choice = await dialog.showOpenDialog({ title: 'Analyze read-only memory image',
+      filters: [{ name: 'Memory images', extensions: ['raw', 'mem', 'vmem', 'dmp'] }], properties: ['openFile'] });
+    if (choice.canceled || !choice.filePaths[0]) return null;
+    return request('POST', `/cases/${caseId}/memory-jobs`, { ...options, path: choice.filePaths[0] });
+  });
+  ipcMain.handle('disk:inspect', async (event, caseId: string, context: import('./types').ArtifactContext) => {
+    trusted(event);
+    if (!/^[a-zA-Z0-9-]+$/.test(caseId)) throw new Error('Invalid case');
+    const choice = await dialog.showOpenDialog({ title: 'Select a read-only disk image', properties: ['openFile'],
+      filters: [{ name: 'Disk images', extensions: ['raw', 'img', 'dd', 'e01', 'ex01'] }] });
+    if (choice.canceled || !choice.filePaths[0]) return null;
+    return request('POST', `/cases/${caseId}/disk-images/inspect`, { path: choice.filePaths[0], context });
+  });
+  ipcMain.handle('network:select-keylog', async (event) => {
+    trusted(event);
+    const choice = await dialog.showOpenDialog({ title: 'Select supplied TLS session key log', properties: ['openFile'] });
+    return choice.canceled ? null : choice.filePaths[0] ?? null;
+  });
   createWindow();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
-}).catch((error: unknown) => { console.error(error); app.exit(1); });
+}).catch(async (error: unknown) => { await showFailure(String(error)); await backend?.stop(); app.exit(1); });
 
-app.on('before-quit', () => {
-  if (backendProcess && !backendProcess.killed) {
-    backendProcess.kill();
+app.on('before-quit', (event) => {
+  if (backend && !quitting) {
+    event.preventDefault();
+    quitting = true;
+    void backend.stop().finally(() => app.quit());
   }
 });
 

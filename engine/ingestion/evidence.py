@@ -10,6 +10,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from engine.normalization import normalize_event
+from engine.version import VERSION
 from schemas.events import Event, ParserInfo, Provenance, RawReference, Source, SourceArtifact
 from schemas.imports import ArtifactContext
 
@@ -139,7 +140,7 @@ class EvidenceReader:
             size=size,
             imported_at=datetime.now(UTC),
         )
-        self.parser = ParserInfo(name=parser, version="0.3.0")
+        self.parser = ParserInfo(name=parser, version=VERSION)
 
     def rows(self) -> list[tuple[str, dict]]:
         try:

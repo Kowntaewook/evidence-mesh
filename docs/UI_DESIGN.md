@@ -57,7 +57,7 @@ Case imports require acquisition ID and aware extraction time; host, volume, tim
 
 Process Detail has Overview, Command Line, Parent/Children, DLLs, Handles, Files, Memory Regions, Sockets, Related Memory, Related Disk and Related Network. Each selected observation leads to its normal provenance/raw inspector. Correlation Inspector shows signed reasons, raw_score and clamped Correlation Score. Timestamp fallback remains labeled.
 
-Tables render at most 100 rows per page. API loading is chunked at 2,000 Events, while the renderer still retains the full case. Graph display is capped at 200 nodes/400 edges with a notice. Repeated entity edges coalesce with support counts; full path tooltips accompany compact file labels. Dense graph layout and 100k-event UI responsiveness are not claimed as validated. Timeline filters source and process/file/registry/DNS/connection/service categories.
+Cases above 2,000 events use server pages of 100 events for Process, Files, Network and Timeline; the renderer retains the current page plus bounded incident/graph support. Search and filters request new pages. Small cases keep the existing bounded behavior. Graph controls set depth, node count, type and minimum score; the server queries bounded adjacency and the existing renderer cap of 200 nodes/400 edges remains visible. Linux Electron smoke tests passed at 10k/50k/100k events, including next-page navigation. This is not a Windows performance result.
 
 New 64-bit addresses display as hexadecimal strings. Unsafe numeric values from API JSON retain exact decimal strings in Raw rather than rounded JavaScript numbers.
 
@@ -75,3 +75,17 @@ New 64-bit addresses display as hexadecimal strings. Unsafe numeric values from 
 | Invalid capture failure | [24-parser-failure.png](../desktop/test-results/24-parser-failure.png) |
 
 Development and packaged Linux ARM64 E2E both passed. Each creates a real case, imports Memory + five Disk formats + content file + PCAPNG (67 Events), confirms 28 successful runs, analyzes PID 4120 (34 related), opens all three related-source tabs, reasons/frame provenance, filters the timeline, selects typed graph relationships and tests a failed capture import. Only native file-picker results are supplied by the test; API, SQLite and tshark remain real. Original 15/9/16 sample assertions are still included.
+
+
+## v0.4 controls and validation
+
+The existing black/red theme and navigation remain. The Case screen adds raw
+memory plugin selection (20 defaults, explicit dumpfiles addresses), progress,
+re-run/cache and cancel; a disk-image picker, read-only volume tree and artifact
+selection; an optional TLS key-log picker; and runtime dependency status.
+Recovered HTTP content shows the body hash/path and observed decryption status.
+Native pickers are automated in `tests/v04-smoke.cjs`; real API/parsers remain in
+use. The test also opens 10k/50k/100k cases and verifies 100 buffered events and
+100 table rows in four views. Observed four-view loops took 970/1467/2307 ms in
+one Linux development run. Installed Windows validation is defined separately
+in `tests/installed-windows.cjs` and has not yet run.

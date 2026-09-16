@@ -10,6 +10,7 @@ from typing import Any
 
 from pydantic import Field
 
+from engine.version import VERSION
 from schemas.events import (
     Event,
     Identifier,
@@ -169,7 +170,7 @@ def read_rows(path: Path, plugin: str, context: ImportContext, *, extended: bool
             provenance = Provenance(
                 source_artifact=artifact,
                 raw_reference=RawReference(artifact_id=artifact.artifact_id, locator=locator),
-                parser=ParserInfo(name="Volatility3Adapter", version="0.2.0"),
+                parser=ParserInfo(name="Volatility3Adapter", version=VERSION),
                 tool="volatility3",
                 tool_version=context.volatility_version,
                 plugin=plugin,
