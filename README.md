@@ -1,232 +1,886 @@
 # EvidenceMesh
 
-[![Download for Windows](https://img.shields.io/badge/Download-Windows-red)](https://github.com/Kowntaewook/evidence-mesh/releases/latest) [![Latest Release](https://img.shields.io/github/v/release/Kowntaewook/evidence-mesh)](https://github.com/Kowntaewook/evidence-mesh/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/Download-Windows-red)](https://github.com/Kowntaewook/evidence-mesh/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/Kowntaewook/evidence-mesh)](https://github.com/Kowntaewook/evidence-mesh/releases/latest)
 
-**v0.4.0 배포 준비 중:** 로컬 테스트 288개 통과. Windows 설치 검증·릴리스는 GitHub 저장소 쓰기 권한(403) 때문에 아직 실행하지 못했습니다. 위 링크는 현재 공개된 최신 릴리스를 가리킵니다.
+**v0.4.0 is now available.**  
+The Windows x64 installer, corresponding-source archive, Windows E2E verification report, and SHA-256 manifest are published on the latest release page.
 
 **Cross-source forensic correlation engine for memory, disk, and network evidence.**
 
-Memory ↔ Disk ↔ Network 증거를 공통 Event로 정규화하고, 선택한 프로세스와 관련된 파일·DNS·연결을 근거와 함께 연결하는 포렌식 분석 엔진입니다. 저장소 이름은 `evidence-mesh`, 원본 소스는 MIT이며, 동봉 구성요소는 [각자의 라이선스](docs/THIRD_PARTY_LICENSES.md)를 따릅니다.
+EvidenceMesh normalizes **Memory ↔ Disk ↔ Network** evidence into a unified Event model and correlates files, DNS observations, and network connections related to a selected process, together with the evidence used to justify each link.
 
-메모리에서 찾은 프로세스, 디스크의 파일 흔적, PCAP의 연결은 서로 다른 형식과 시간 기준을 사용합니다. EvidenceMesh는 도구별 결과를 직접 비교하지 않고 공통 스키마를 거쳐 사건 그래프와 타임라인을 만듭니다. 점수와 그 산출 근거를 함께 저장하므로 분석자가 연결을 검토할 수 있습니다. 점수는 확률이나 악성 판정이 아닙니다.
+The project source is licensed under MIT. Bundled third-party components remain subject to [their respective licenses](docs/THIRD_PARTY_LICENSES.md).
 
-## 기능
+Processes found in memory, file artifacts recovered from disk, and connections observed in PCAPs all use different formats and time references. EvidenceMesh does not directly compare tool-specific outputs. Instead, it maps them into a common schema and builds an incident graph and timeline.
 
-- Pydantic Event Schema, UTC 정규화, Windows 경로 비교, 원본 reference 보존
-- 후보 인덱스를 이용하는 Temporal / Process / File / Network / Artifact 규칙, 양수·음수 근거와 raw score
-- 점수·rule version·필드 근거·설명을 보존하는 SQLite 저장소
-- 프로세스 중심 연결 컴포넌트, Incident Graph, 시간순 Timeline
-- FastAPI 사건 생성·JSON 입력·분석·조회 API와 OpenAPI
-- Volatility JSON 21종: 기존 5개 병합을 유지하면서 scan, handles, VAD, services, registry, kernel, dumpfiles 추가
-- MFT/USN v2/SCCA Prefetch/EVTX/Amcache 원시 파일과 문서화된 CSV·JSON export 입력
-- 실제 PCAP/PCAPNG를 offline tshark로 해독: DNS, TCP/UDP flow, HTTP, TLS SNI
-- Electron / TypeScript Black + Red workstation: Evidence tree → Process → Correlation → Inspector / Provenance → Timeline / Graph
-- 기존 Sample 15개 / 관련 9개 / 링크 16개 유지; 새 사건 67개 / 관련 34개 / 명시적 Noise 29개
-- 원본 hash/size/path/imported_at, parser run 상태·오류, case manifest, SQLite migration, 100행 UI pagination
+Correlation scores are stored together with the rules and evidence that produced them so analysts can review every link.
 
-**v0.4 추가:** bundled TShark 및 Python/Volatility 패키징, 동적 loopback backend 자동 실행·종료, raw memory plugin orchestration/progress/cancel/cache, MAM4 Prefetch, USN v3/v4, read-only NTFS image discovery/extraction, HTTP body SHA-256 및 supplied-key TLS 복호화, 대용량 사건의 서버 페이지와 제한된 graph query를 구현했습니다. **NOT VALIDATED WITH REAL MEMORY IMAGE**. 실제 Windows 설치 검증은 아직 남아 있습니다. [지원표](docs/PARSER_SUPPORT.md), [검증 기록](docs/VERIFICATION.md)을 확인하세요.
+> A correlation score is not a probability and is not a malware verdict.
+
+## Features
+
+- Pydantic Event schema
+- UTC timestamp normalization
+- Windows path normalization and comparison
+- Preservation of original evidence references
+- Temporal / Process / File / Network / Artifact correlation rules
+- Positive and negative evidence with deterministic raw scoring
+- Candidate indexing to avoid unnecessary all-to-all comparisons
+- SQLite repository with preserved:
+  - scores
+  - rule versions
+  - field-level evidence
+  - explanations
+- Process-centered connected components
+- Incident Graph
+- Chronological Timeline
+- FastAPI APIs for:
+  - case creation
+  - evidence ingestion
+  - analysis
+  - querying
+  - OpenAPI
+- Support for 21 Volatility JSON plugin types
+- MFT / USN / Prefetch / EVTX / Amcache parsing
+- Offline PCAP / PCAPNG analysis using TShark
+- DNS, TCP/UDP flow, HTTP, and TLS metadata extraction
+- Electron + TypeScript forensic workstation
+- Parser-run status and error tracking
+- Original artifact hash / size / path / import time preservation
+- Case manifests and SQLite migrations
+- Server-side pagination for large cases
+- Bounded graph queries
+
+### Added in v0.4
+
+- Bundled TShark
+- Bundled Python / Volatility runtime
+- Automatic loopback backend startup and shutdown
+- Raw-memory plugin orchestration
+- Progress tracking
+- Cancellation
+- Result caching
+- MAM4 Prefetch decompression
+- USN v3 / v4 support
+- Read-only NTFS image discovery and extraction
+- HTTP body recovery and SHA-256 hashing
+- TLS decryption with a supplied session key log
+- Large-case server-side paging
+- Bounded graph queries
+- Self-contained Windows installer
+- Installed-application E2E validation
+
+**Raw-memory execution is implemented but has NOT BEEN VALIDATED WITH A REAL MEMORY IMAGE.**
+
+See:
+
+- [Parser Support Matrix](docs/PARSER_SUPPORT.md)
+- [Verification Record](docs/VERIFICATION.md)
+- [Windows Packaging](docs/WINDOWS_PACKAGING.md)
+
+---
 
 ## Architecture
 
 ```text
-Read-only Evidence → Collector / Parser → Normalizer → Unified Event
-                                                        ↓
-                                                 SQLite Repository
-                                                        ↓
-                                             Deterministic Rule Engine
-                                                        ↓
-                                       Correlations + Reasons → Incident Graph
-                                                        ↓
-                                            Timeline / API / Desktop UI
+Read-only Evidence
+        ↓
+Collector / Parser
+        ↓
+Normalizer
+        ↓
+Unified Event
+        ↓
+SQLite Repository
+        ↓
+Deterministic Rule Engine
+        ↓
+Correlations + Reasons
+        ↓
+Incident Graph
+        ↓
+Timeline / API / Desktop UI
 ```
+
+Project structure:
 
 ```text
-engine/collectors/{memory,disk,network}   기존 artifact 읽기
-engine/parsers/                          JSON / Volatility reader + 설정 가능한 Parser facade
-engine/ingestion/                        사건 입력, 공통 원본 읽기, 실행 결과 기록
-engine/normalization/                    Event 검증, UTC / IP / host 정규화
-engine/correlation/                      독립 규칙 및 deterministic scoring
-engine/graph/                            Node / Edge projection
-engine/storage/                          Repository protocol + SQLite
-api/                                    FastAPI app factory
-desktop/                                Electron main / preload / renderer
-schemas/                                Pydantic 모델과 생성된 JSON Schema
-samples/sample_case/                    memory / disk / network JSON
-samples/cross_source/                   21개 memory export + disk artifact + 실제 capture container
-tests/                                  pytest 검증
-docs/                                   설계, 스키마, 규칙, 검증 기록
+engine/collectors/{memory,disk,network}   Read existing forensic artifacts
+engine/parsers/                           JSON / Volatility readers and parser facade
+engine/ingestion/                         Case ingestion and parser-run recording
+engine/normalization/                     Event validation and normalization
+engine/correlation/                       Independent deterministic correlation rules
+engine/graph/                             Node / Edge projections
+engine/storage/                           Repository protocol + SQLite
+api/                                      FastAPI application
+desktop/                                  Electron main / preload / renderer
+schemas/                                  Pydantic models and generated JSON Schema
+samples/sample_case/                      Sample memory / disk / network JSON
+samples/cross_source/                     Cross-source forensic sample
+tests/                                    pytest verification
+docs/                                     Architecture, schema, rules, and verification docs
 ```
 
-Python 3.12+, Pydantic 2, SQLite, FastAPI, Uvicorn, Electron, TypeScript를 사용합니다. Python 분석은 AI나 외부 모델에 의존하지 않습니다. 패키지 관리 파일은 `pyproject.toml`, `requirements.lock`, `desktop/package-lock.json`입니다.
+EvidenceMesh uses:
 
-## Windows 배포와 개발 설치
+- Python 3.12+
+- Pydantic 2
+- SQLite
+- FastAPI
+- Uvicorn
+- Electron
+- TypeScript
 
-Windows 목표 설치 파일은 `EvidenceMesh.Setup.0.4.0.exe` 하나이며 Python/Node/Volatility/TShark 수동 설치를 요구하지 않습니다. 설치·실행 검증이 통과하기 전에는 v0.4 완료 배포로 표시하지 않습니다. unsigned 빌드는 SmartScreen 경고가 표시될 수 있습니다. [Windows 패키징](docs/WINDOWS_PACKAGING.md), [릴리스 절차](docs/RELEASE_PROCESS.md), [소스·라이선스](docs/THIRD_PARTY_LICENSES.md).
+The analysis engine does **not** depend on AI APIs or external language models.
 
-다음은 **개발 환경** 설치입니다. Python 3.12 이상과 Node.js 22.12 이상이 필요합니다. 개발/검증 환경은 Python 3.14 및 Node 24입니다. Linux Electron에는 GTK/NSS 등 Chromium 런타임 라이브러리가 필요합니다. Windows에서는 일반 사용자 계정으로 실행합니다.
+Package-management files:
+
+```text
+pyproject.toml
+requirements.lock
+desktop/package-lock.json
+```
+
+---
+
+## Windows Release
+
+The Windows x64 release is distributed as:
+
+```text
+EvidenceMesh.Setup.0.4.0.exe
+```
+
+The installer contains the required runtime components, so users do not need to manually install:
+
+- Python
+- Node.js
+- Volatility 3
+- TShark
+
+Download:
+
+https://github.com/Kowntaewook/evidence-mesh/releases/latest
+
+The v0.4.0 release also contains:
+
+```text
+EvidenceMesh.Setup.0.4.0.exe
+EvidenceMesh.CorrespondingSource.0.4.0.zip
+Windows-E2E.json
+SHA256SUMS.txt
+```
+
+The installer may trigger a Windows SmartScreen warning when distributed without code-signing credentials.
+
+See:
+
+- [Windows Packaging](docs/WINDOWS_PACKAGING.md)
+- [Release Process](docs/RELEASE_PROCESS.md)
+- [Third-Party Licenses](docs/THIRD_PARTY_LICENSES.md)
+
+---
+
+## Development Setup
+
+The following instructions are for the **development environment**.
+
+Requirements:
+
+- Python 3.12+
+- Node.js 22.12+
+- npm
+
+### Linux / macOS
 
 ```bash
 cd evidence-mesh
+
 python3 -m venv .venv
 source .venv/bin/activate
+
 python -m pip install -r requirements.lock
 python -m pip install -e '.[dev]'
-# Debian/Ubuntu: PCAP 입력을 위한 외부 decoder
+
+# Debian / Ubuntu: external decoder for PCAP input
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y tshark
+
 cd desktop
 npm ci
 cd ..
 ```
 
-Windows PowerShell:
+### Windows PowerShell
 
 ```powershell
 cd evidence-mesh
+
 py -3 -m venv .venv
 .\.venv\Scripts\Activate.ps1
+
 python -m pip install -r requirements.lock
 python -m pip install -e ".[dev]"
+
 cd desktop
 npm ci
 cd ..
 ```
 
-## 실행
+Electron on Linux requires Chromium runtime dependencies such as GTK and NSS.
 
-첫 번째 터미널에서 저장소 루트의 가상환경을 활성화한 후 API를 실행합니다.
+On Windows, the application should normally be run as a standard user.
+
+---
+
+## Running in Development
+
+Start the API from the repository root:
 
 ```bash
 python -m uvicorn api.main:app --host 127.0.0.1 --port 8765
 ```
 
-두 번째 터미널:
+Then start the Electron desktop application in another terminal:
 
 ```bash
 cd evidence-mesh/desktop
 npm start
 ```
 
-API 주소는 `http://127.0.0.1:8765`, Swagger 문서는 `/docs`, 스키마는 `/openapi.json`입니다. 개발 실행에서는 API 터미널을 열어 둡니다. Windows packaged Desktop은 별도 API 터미널 없이 backend를 시작하고, 무작위 loopback port와 세션 token을 사용합니다. 개발용 단독 API는 token 환경 변수를 설정하지 않으면 인증을 요구하지 않습니다.
+Development API:
 
-설정:
-
-| 환경 변수 | 기본값 | 용도 |
-|---|---|---|
-| `EVIDENCEMESH_DB` | `data/evidencemesh.sqlite3` | 분석 DB 위치; 원본 증거와 다른 위치 사용 |
-| `EVIDENCEMESH_SAMPLE_DIR` | 저장소의 `samples/sample_case` | API 샘플 폴더 |
-| `EVIDENCEMESH_API` | `http://127.0.0.1:8765` | Desktop의 로컬 API origin |
-| `EVIDENCEMESH_TSHARK` | Windows resources의 절대 경로 | bundled decoder 우선 탐색 |
-| `EVIDENCEMESH_WORKSPACE` | packaged AppData | 로그·derived·memory 작업공간 |
-| `EVIDENCEMESH_PYTHON` | `.venv`의 Python | Desktop E2E 검증용 Python 경로 |
-
-## Sample 분석
-
-1. Desktop에서 **Load Sample Evidence**를 클릭합니다. 매번 별도 사건이 생성됩니다.
-2. **Processes**에서 **powershell.exe · PID 4120 · 09:31:25**를 선택합니다. 같은 PID를 재사용한 Noise process도 별도로 표시됩니다.
-3. **Analyze Evidence**를 클릭합니다.
-4. 관련 이벤트 9개, 근거를 가진 링크 16개, 시간순 타임라인이 표시됩니다.
-5. 링크 또는 그래프 선을 클릭해 score, rule, 설명, source artifact, parser, raw reference를 확인합니다.
-6. `notepad.exe`를 선택해 분석하면 `No matching evidence`가 표시됩니다.
-
-시나리오는 `explorer.exe → invoice.zip → powershell.exe → a.ps1 → evil.example → 185.10.10.5:443`입니다. ZIP과 실행의 인과관계를 자동으로 확정하지 않습니다. ZIP을 기록한 explorer 프로세스, PowerShell의 PPID, 스크립트 경로, 소켓 tuple과 DNS 응답으로 사건의 관측 정보를 연결합니다. IP/도메인은 문자열 데이터이며 접속하거나 실행하지 않습니다. 악성코드·스크립트 payload·원본 대용량 이미지는 포함하지 않습니다.
-
-CLI에서도 같은 분석을 실행할 수 있습니다.
-
-```bash
-python -m engine.cli sample --db data/demo.sqlite3 --output data/demo-report.json
+```text
+http://127.0.0.1:8765
 ```
 
-출력 JSON에는 case, correlations/reasons, graph, timeline이 모두 들어갑니다. 기존 report 경로에는 덮어쓰지 않으므로 재실행 시 새 출력 이름을 사용합니다. `--samples`, `--root`로 입력 폴더와 선택 이벤트를 변경할 수 있습니다. CLI의 기본 root는 `MEM-PS`입니다.
+Swagger UI:
 
-주요 실제 점수:
+```text
+http://127.0.0.1:8765/docs
+```
 
-| 연결 | 점수 | 주요 근거 |
+OpenAPI schema:
+
+```text
+http://127.0.0.1:8765/openapi.json
+```
+
+During development, the API terminal must remain running.
+
+The packaged Windows desktop application does not require a separate API terminal. It automatically launches the embedded backend using:
+
+- a random loopback port
+- a per-session authentication token
+
+The standalone development API does not require authentication unless the session-token environment variable is configured.
+
+---
+
+## Configuration
+
+| Environment Variable | Default | Purpose |
+|---|---|---|
+| `EVIDENCEMESH_DB` | `data/evidencemesh.sqlite3` | Analysis database path |
+| `EVIDENCEMESH_SAMPLE_DIR` | `samples/sample_case` | Sample evidence directory |
+| `EVIDENCEMESH_API` | `http://127.0.0.1:8765` | Local API origin used by the desktop |
+| `EVIDENCEMESH_TSHARK` | Bundled Windows path | Preferred TShark executable |
+| `EVIDENCEMESH_WORKSPACE` | Packaged AppData | Logs, derived evidence, and memory jobs |
+| `EVIDENCEMESH_PYTHON` | Python inside `.venv` | Python path used by desktop E2E tests |
+
+---
+
+## Sample Analysis
+
+1. Open the desktop application.
+2. Click **Load Sample Evidence**.
+3. Open **Processes**.
+4. Select:
+
+```text
+powershell.exe
+PID 4120
+09:31:25
+```
+
+5. Click **Analyze Evidence**.
+
+The sample produces:
+
+```text
+15 total events
+9 related incident events
+16 evidence-backed links
+```
+
+Click a correlation or graph edge to inspect:
+
+- score
+- rule
+- explanation
+- source artifact
+- parser
+- raw reference
+- provenance
+
+Selecting `notepad.exe` and analyzing it should display:
+
+```text
+No matching evidence
+```
+
+### Sample Scenario
+
+```text
+explorer.exe
+    ↓
+invoice.zip
+    ↓
+powershell.exe
+    ↓
+a.ps1
+    ↓
+evil.example
+    ↓
+185.10.10.5:443
+```
+
+EvidenceMesh does **not** automatically claim that the ZIP file caused execution.
+
+Instead, it correlates observed evidence such as:
+
+- the Explorer process associated with the ZIP
+- PowerShell PPID
+- script path
+- socket tuple
+- DNS response
+- PCAP observations
+
+IP addresses and domain names in the sample are inert data.
+
+The repository does not include malware payloads, executable scripts, or large original forensic images.
+
+---
+
+## CLI Sample Analysis
+
+The same sample can be analyzed from the CLI:
+
+```bash
+python -m engine.cli sample \
+  --db data/demo.sqlite3 \
+  --output data/demo-report.json
+```
+
+The generated JSON contains:
+
+- case metadata
+- correlations
+- correlation reasons
+- graph
+- timeline
+
+Existing report files are not overwritten.
+
+Use a new output filename when rerunning.
+
+Additional options:
+
+```text
+--samples
+--root
+```
+
+The default root event is:
+
+```text
+MEM-PS
+```
+
+---
+
+## Example Correlation Scores
+
+| Link | Score | Main Evidence |
 |---|---:|---|
-| PowerShell → MFT의 a.ps1 | 85 | command line 경로 50 + 시간 30 + NTFS 5 |
-| Memory socket → PCAP connection | 90 | 5-tuple 60 + 시간 30 |
-| DNS → PCAP connection | 80 | resolved IP 40 + DNS 선행 10 + 시간 30 |
+| PowerShell → `a.ps1` in MFT | 85 | command-line path 50 + time 30 + NTFS 5 |
+| Memory socket → PCAP connection | 90 | 5-tuple 60 + time 30 |
+| DNS → PCAP connection | 80 | resolved IP 40 + DNS precedence 10 + time 30 |
 
-이는 직접 edge 점수입니다. PowerShell → socket → DNS처럼 여러 단계를 통과하는 연결에 점수를 곱하거나 직접 연결로 표시하지 않습니다.
+These are **direct-edge scores**.
 
-## Volatility JSON import
+EvidenceMesh does not multiply scores across multi-hop paths such as:
 
-Volatility의 JSON renderer가 만든 `pslist.json`, `pstree.json`, `cmdline.json`, `netscan.json`, `dlllist.json`을 같은 폴더에 둡니다. 하나의 메모리 이미지에서 추출한 결과만 한 번에 병합합니다. `--image-id`는 실제 증거 식별자, `--extracted-at`은 분석 결과를 추출한 timezone 포함 시각입니다.
+```text
+PowerShell → socket → DNS
+```
 
-다음 명령은 저장소의 **합성 Volatility 형식 fixture**를 실제로 변환하고 SQLite에 저장합니다.
+and does not represent those paths as direct correlations.
+
+---
+
+## Volatility JSON Import
+
+Place Volatility JSON exports in the same directory:
+
+```text
+pslist.json
+pstree.json
+cmdline.json
+netscan.json
+dlllist.json
+```
+
+Only outputs extracted from the **same memory image** should be merged in one operation.
+
+Example:
 
 ```bash
 python -m engine.cli import-memory tests/fixtures/volatility \
-  --image-id fixture-memory-01 --extracted-at 2026-09-16T09:35:00Z \
-  --hostname workstation-01 --volatility-version 2.28.0 \
-  --db data/evidencemesh.sqlite3 --output data/volatility-events.json
+  --image-id fixture-memory-01 \
+  --extracted-at 2026-09-16T09:35:00Z \
+  --hostname workstation-01 \
+  --volatility-version 2.28.0 \
+  --db data/evidencemesh.sqlite3 \
+  --output data/volatility-events.json
 ```
 
-5개 파일의 14개 row가 8개 Event로 정규화됩니다: process 3, socket 2, DLL 3. 같은 DB를 사용하는 Desktop에서 **Refresh** 후 생성된 사건을 선택합니다. 또는 새 사건에 출력 JSON을 Import JSON으로 수입합니다. CLI는 수입만 수행하며 **Processes → Analyze Evidence**에서 분석합니다. 출력 파일은 덮어쓰지 않습니다.
+The synthetic fixture contains:
 
-단일 파일은 `import-memory pslist.json --plugin windows.pslist ...`로 지정합니다. 알려지지 않은 Volatility 버전은 생략할 수 있으며 `null`과 경고로 기록합니다. 결측 사건 시각은 명시적인 `extraction_time`으로 표시하고 시간 기반 점수를 부여하지 않습니다. 입력 형식·내부 API·병합 정책은 [Volatility Adapter](docs/VOLATILITY_ADAPTER.md), UI 구조는 [UI Design](docs/UI_DESIGN.md)을 참고합니다.
+```text
+14 rows
+↓
+8 normalized Events
+```
+
+Result:
+
+```text
+3 process events
+2 socket events
+3 DLL events
+```
+
+After importing into the same database used by the desktop application:
+
+1. Click **Refresh**
+2. Select the newly created case
+3. Open **Processes**
+4. Click **Analyze Evidence**
+
+For a single Volatility JSON file:
+
+```bash
+python -m engine.cli import-memory pslist.json \
+  --plugin windows.pslist \
+  ...
+```
+
+Unknown Volatility versions may be omitted and are stored as `null` with a warning.
+
+Events without an original event timestamp use an explicit `extraction_time` and do not receive temporal correlation scores.
+
+See:
+
+- [Volatility Adapter](docs/VOLATILITY_ADAPTER.md)
+- [UI Design](docs/UI_DESIGN.md)
+
+---
 
 ## API
 
-| Method | Path | 동작 |
+| Method | Path | Behavior |
 |---|---|---|
-| GET | `/health` | 서버와 DB 연결 확인 |
-| POST / GET | `/cases` | 사건 생성 / 목록 |
-| GET | `/cases/{case_id}` | 사건과 revision 조회 |
-| POST / GET | `/cases/{case_id}/events` | Event 배열 입력 / 조회 (`source`, `pid` 필터) |
-| POST | `/cases/{case_id}/correlate` | 전체 사건 분석, optional `root_event_id`, `min_score` |
-| GET | `/cases/{case_id}/correlations` | 보존된 근거 포함 연결 |
-| GET | `/cases/{case_id}/graph` | 그래프 |
-| GET | `/cases/{case_id}/timeline` | UTC 타임라인 |
-| POST | `/cases/{case_id}/import/{memory,disk,network}` | 원본 경로 + acquisition context 입력, parser run 결과 반환 |
-| GET | `/cases/{case_id}/{processes,files,network}` | 해당 하위 모델이 있는 관측, limit/offset 지원 |
-| GET | `/cases/{case_id}/{imports,parser-runs}` | 성공·실패·미지원·미입력 기록 |
-| GET | `/parsers/volatility` | 설치된 plugin/alias discovery |
-| POST | `/samples/load` | 합성 사건 만들기 |
-| GET | `/runtime/dependencies` | 실제 runtime import/version/data 상태 |
-| GET | `/cases/{case_id}/event-page` | 제한된 서버 page/search/view 조회 |
-| POST / GET | `/cases/{case_id}/memory-jobs` | raw-memory 실행/진행, job별 GET/cancel |
-| POST | `/cases/{case_id}/disk-images/{inspect,import}` | read-only volume 탐지/선택 추출 |
+| GET | `/health` | Check server and database connectivity |
+| POST / GET | `/cases` | Create / list cases |
+| GET | `/cases/{case_id}` | Read case and revision |
+| POST / GET | `/cases/{case_id}/events` | Add / query Events |
+| POST | `/cases/{case_id}/correlate` | Analyze a case |
+| GET | `/cases/{case_id}/correlations` | Read stored correlations and reasons |
+| GET | `/cases/{case_id}/graph` | Read incident graph |
+| GET | `/cases/{case_id}/timeline` | Read UTC timeline |
+| POST | `/cases/{case_id}/import/{memory,disk,network}` | Import evidence |
+| GET | `/cases/{case_id}/{processes,files,network}` | Query categorized observations |
+| GET | `/cases/{case_id}/{imports,parser-runs}` | Read import/parser execution results |
+| GET | `/parsers/volatility` | Discover available Volatility plugins |
+| POST | `/samples/load` | Create the synthetic sample case |
+| GET | `/runtime/dependencies` | Report runtime dependency status |
+| GET | `/cases/{case_id}/event-page` | Server-side page/search/view query |
+| POST / GET | `/cases/{case_id}/memory-jobs` | Raw-memory analysis jobs |
+| POST | `/cases/{case_id}/disk-images/{inspect,import}` | Inspect/import disk-image artifacts |
 
-correlations/graph/timeline 조회에 `?root_event_id=MEM-PS`를 지정하면 선택 프로세스의 연결 컴포넌트를 조회합니다. 분석 전에 graph/correlations를 조회하면 409, 없는 사건·root는 404, 잘못된 request schema는 422입니다. 기존 `/events`의 중복 ID는 409이며 batch가 rollback됩니다. 새 artifact import는 parser/storage 실패를 `ImportReport.status`와 `runs[].error`에 기록합니다. HTTP 200만으로 성공을 판단하지 않습니다. 입력 추가 후 기존 분석은 무효화됩니다. `/events`는 source/pid/event_type/artifact_type/limit/offset, Timeline은 source/category/pid/start/end/limit/offset 필터를 지원합니다. JSON batch당 5,000개 제한은 유지하지만 사건 분석의 5,000개 제한은 제거했습니다.
+Example:
 
-## Cross-source 사건 입력
+```text
+/cases/{case_id}/graph?root_event_id=MEM-PS
+```
+
+or:
+
+```text
+/cases/{case_id}/timeline?root_event_id=MEM-PS
+```
+
+Expected errors:
+
+```text
+409  Analysis required / duplicate event conflict
+404  Missing case or root event
+422  Invalid request schema
+```
+
+Artifact imports record parser and storage failures in:
+
+```text
+ImportReport.status
+runs[].error
+```
+
+An HTTP 200 response alone does not mean that every parser succeeded.
+
+Adding new evidence invalidates previously computed analysis.
+
+---
+
+## Cross-source Case Import
 
 ```bash
-python -m engine.cli import-case samples/cross_source --db data/cross-source.sqlite3
-# 출력의 case_id 사용
-python -m engine.cli correlate --db data/cross-source.sqlite3 --case-id CASE_ID
-python -m engine.cli timeline --db data/cross-source.sqlite3 --case-id CASE_ID
-python -m engine.cli graph --db data/cross-source.sqlite3 --case-id CASE_ID
-python -m engine.cli parser-runs --db data/cross-source.sqlite3 --case-id CASE_ID
+python -m engine.cli import-case samples/cross_source \
+  --db data/cross-source.sqlite3
+```
+
+Use the returned `case_id`:
+
+```bash
+python -m engine.cli correlate \
+  --db data/cross-source.sqlite3 \
+  --case-id CASE_ID
+
+python -m engine.cli timeline \
+  --db data/cross-source.sqlite3 \
+  --case-id CASE_ID
+
+python -m engine.cli graph \
+  --db data/cross-source.sqlite3 \
+  --case-id CASE_ID
+
+python -m engine.cli parser-runs \
+  --db data/cross-source.sqlite3 \
+  --case-id CASE_ID
+
 python -m engine.cli discover-plugins
 ```
 
-개별 입력은 `case-create --name NAME` 후 `import memory|mft|usn|prefetch|evtx|amcache|file|pcap INPUT --case-id ID --acquisition-id ID --extracted-at ISO_TIME`입니다. 모든 명령에 `--db`를 지정할 수 있습니다. `--hostname`, `--volume-id`, `--timezone`, `--mount-point`, `--logical-path`, `--recovered-directory`는 알고 있는 경우에만 지정합니다. [Case format](docs/CASE_FORMAT.md)에 완전한 manifest 예시가 있습니다.
+For individual evidence inputs, create a case first:
 
-Desktop의 Case 화면에서도 **Import Memory / Import Disk / Import PCAP**으로 직접 입력합니다. Memory export는 같은 이미지의 JSON 폴더를 선택합니다. 별도 raw-memory 패널에서는 이미지를 선택하고 plugin 진행·취소·캐시를 사용합니다. 디스크 이미지 패널은 volume/artifact를 선택해 추출하며, PCAP에는 선택적으로 TLS key log를 지정할 수 있습니다. PID 4120 선택 후 Analyze하면 `a.ps1` command line·handle·MFT·USN·Prefetch, `example.test` DNS/TLS, `203.0.113.20:443` 메모리 socket/PCAP flow를 추적할 수 있습니다. 출력 및 DB는 입력 evidence 폴더 밖에 둡니다.
+```bash
+python -m engine.cli case-create --name NAME
+```
 
-## 검증 및 패키징
+Then import:
+
+```text
+memory
+mft
+usn
+prefetch
+evtx
+amcache
+file
+pcap
+```
+
+Example:
+
+```bash
+python -m engine.cli import pcap INPUT \
+  --case-id ID \
+  --acquisition-id ID \
+  --extracted-at ISO_TIME
+```
+
+Optional context fields include:
+
+```text
+--hostname
+--volume-id
+--timezone
+--mount-point
+--logical-path
+--recovered-directory
+```
+
+Only provide values that are actually known.
+
+See [Case Format](docs/CASE_FORMAT.md) for a complete manifest example.
+
+---
+
+## Desktop Evidence Import
+
+The desktop application supports direct evidence import:
+
+- **Import Memory**
+- **Import Disk**
+- **Import PCAP**
+
+Memory JSON exports should come from the same memory image.
+
+The raw-memory panel provides:
+
+- image selection
+- plugin progress
+- cancellation
+- result caching
+
+The disk-image panel provides:
+
+- volume discovery
+- artifact selection
+- read-only extraction
+
+PCAP import optionally accepts a TLS session key log.
+
+A cross-source investigation can correlate evidence such as:
+
+```text
+PowerShell PID 4120
+a.ps1 command line
+a.ps1 file handle
+MFT entry
+USN entry
+Prefetch entry
+DNS lookup
+TLS observation
+memory socket
+PCAP flow
+```
+
+Keep output files and the EvidenceMesh analysis database outside the original evidence directory.
+
+---
+
+## Verification
+
+Run the Python checks:
 
 ```bash
 pytest -q
 ruff check .
 ruff format --check .
 python -m build
+```
+
+Desktop checks:
+
+```bash
 cd desktop
+
 npm run typecheck
 npm run build
 npm run package
 npm run test:e2e
 ```
 
-`npm run package`는 현재 OS/CPU용 실행 디렉터리를 `desktop/release/`에 만듭니다. Python API는 별도로 실행해야 합니다. Windows self-contained installer는 별도 `npm run package:win`과 CI 설치 검증을 사용합니다. macOS 서명/공증은 범위 밖입니다. Linux headless 검증은 `xvfb-run -a npm run test:e2e`를 사용하며 Xvfb와 xauth가 필요합니다. 테스트는 임시 DB와 실제 Uvicorn/Electron 프로세스를 사용하고 종료 시 정리합니다. 루트 컨테이너에서만 E2E runner가 `--no-sandbox`를 추가하며 일반 `npm start`에는 적용하지 않습니다.
+`npm run package` creates an executable directory for the current OS / CPU under:
 
-자세한 실제 검증 결과는 [docs/VERIFICATION.md](docs/VERIFICATION.md)에 기록합니다. GitHub Actions workflow는 Python 3.12/3.14 검증과 Linux Desktop 빌드를 정의합니다. 로컬 실행 결과와 원격 CI 실행은 별개입니다.
+```text
+desktop/release/
+```
 
-## 검증 범위와 한계
+This development package still requires the Python API to be started separately.
 
-10,000 / 50,000 / 100,000 synthetic normalized events로 import·correlation·peak memory·DB 크기를 측정했습니다. 최종 100,000개 실행은 import 14.52초, correlation 11.80초, peak 1,425.45 MiB입니다. 49억 9,995만 전체 쌍 중 21만 후보만 평가했습니다. 원시 이미지 decoding 또는 전체 graph rendering 성능 수치는 아닙니다. 같은 identity가 매우 밀집한 그룹은 여전히 많은 실제 연결을 만들 수 있습니다.
+The self-contained Windows installer is built with:
 
-실제 메모리 이미지: **NOT VALIDATED WITH REAL MEMORY IMAGE**. E01 reader, MAM 0x84, 삭제 registry cell 복원, transaction log replay, NAT/clock-skew 자동 보정과 device-volume alias 자동 추정은 지원하지 않습니다. TLS 복호화에는 일치하는 사용자 제공 key log가 필요합니다. Windows 설치·실행과 릴리스는 현재 미검증이며 서명은 optional입니다. 높은 Correlation Score와 psscan/malfind/module mismatch는 악성·인과관계 판정이 아닙니다. AI API는 사용하지 않습니다.
+```bash
+npm run package:win
+```
 
-설계 상세: [Architecture](docs/ARCHITECTURE.md), [Event Schema](docs/EVENT_SCHEMA.md), [Correlation Rules](docs/CORRELATION_RULES.md).
+and is additionally verified by GitHub Actions using a real Windows install / run / uninstall workflow.
+
+Linux headless Electron verification uses:
+
+```bash
+xvfb-run -a npm run test:e2e
+```
+
+Tests use temporary databases and real Uvicorn / Electron processes and clean them up after completion.
+
+Only the root-container E2E runner adds:
+
+```text
+--no-sandbox
+```
+
+Normal `npm start` does not.
+
+See [docs/VERIFICATION.md](docs/VERIFICATION.md) for detailed results.
+
+---
+
+## Windows Release Verification
+
+The v0.4.0 release pipeline verifies:
+
+```text
+Python regression tests
+Ruff
+Source/license collection
+Frozen Python backend
+Runtime dependencies
+Bundled Volatility
+Bundled TShark
+TypeScript
+NSIS installer creation
+Silent installation
+Installed Electron application startup
+Embedded backend startup
+SQLite creation
+Loopback authentication
+Sample analysis
+Correlation
+Provenance
+Timeline
+Incident graph
+Disk artifact imports
+Read-only NTFS image parsing
+PCAP / PCAPNG parsing
+HTTP / TLS handling
+Clean application shutdown
+Backend shutdown
+No orphan worker processes
+Silent uninstall
+Preservation of user evidence
+Release SHA-256 manifest
+```
+
+The published release also contains:
+
+```text
+Windows-E2E.json
+```
+
+which records the executed Windows validation checks.
+
+---
+
+## Performance
+
+EvidenceMesh was tested with synthetic normalized event datasets containing:
+
+```text
+10,000 events
+50,000 events
+100,000 events
+```
+
+For the 100,000-event run:
+
+```text
+Import time:       14.52 s
+Correlation time:  11.80 s
+Peak memory:       1,425.45 MiB
+```
+
+Approximately:
+
+```text
+210,000 candidate pairs
+```
+
+were evaluated instead of approximately:
+
+```text
+4.99995 billion possible pairs
+```
+
+These numbers measure normalized-event import and correlation.
+
+They do **not** measure:
+
+- raw forensic image decoding
+- full graph-rendering performance
+
+Very dense groups sharing the same identity can still produce many real links.
+
+---
+
+## Limitations
+
+### Raw memory
+
+Raw-memory orchestration is implemented, but:
+
+**NOT VALIDATED WITH REAL MEMORY IMAGE**
+
+Volatility may require matching symbols for a real memory image.
+
+### Disk
+
+Currently unsupported or incomplete:
+
+- E01 reader
+- encrypted disk layouts
+- deleted registry-cell recovery
+- transaction-log replay
+- MAM 0x84
+- some unsupported disk layouts
+
+### Network
+
+Automatic handling is not currently provided for:
+
+- NAT correction
+- clock-skew correction
+- device-volume alias inference
+
+TLS decryption requires a matching user-provided session key log.
+
+Without keys, EvidenceMesh records TLS metadata only.
+
+### Interpretation
+
+A high Correlation Score does **not** mean:
+
+- malware
+- compromise
+- causation
+
+Similarly, observations such as:
+
+```text
+psscan mismatch
+malfind result
+module mismatch
+```
+
+are forensic observations and must be interpreted by an analyst.
+
+EvidenceMesh does not use an AI API.
+
+---
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Event Schema](docs/EVENT_SCHEMA.md)
+- [Correlation Rules](docs/CORRELATION_RULES.md)
+- [Parser Support](docs/PARSER_SUPPORT.md)
+- [Verification](docs/VERIFICATION.md)
+- [Windows Packaging](docs/WINDOWS_PACKAGING.md)
+- [Release Process](docs/RELEASE_PROCESS.md)
+- [Volatility Adapter](docs/VOLATILITY_ADAPTER.md)
+- [UI Design](docs/UI_DESIGN.md)
+- [Third-Party Licenses](docs/THIRD_PARTY_LICENSES.md)
+
+---
+
+## License
+
+EvidenceMesh source code is licensed under the **MIT License**.
+
+Bundled third-party components retain their original licenses.
+
+See:
+
+[docs/THIRD_PARTY_LICENSES.md](docs/THIRD_PARTY_LICENSES.md)
