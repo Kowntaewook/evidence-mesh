@@ -43,6 +43,7 @@ jobs:
             --name evidencemesh-backend `
             --collect-data samples `
             --collect-data schemas `
+            --collect-data tzdata `
             --collect-all volatility3 `
             --collect-all Evtx `
             --collect-all dissect.ntfs `

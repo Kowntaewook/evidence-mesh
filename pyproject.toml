@@ -8,7 +8,7 @@ version = "0.3.0"
 description = "Cross-source forensic correlation engine for memory, disk, and network evidence."
 requires-python = ">=3.12"
 license = "MIT"
-dependencies = ["pydantic>=2.11,<3", "fastapi>=0.115,<1", "uvicorn>=0.34,<1"]
+dependencies = ["pydantic>=2.11,<3", "fastapi>=0.115,<1", "uvicorn>=0.34,<1", "tzdata>=2025.2"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.3,<10", "httpx>=0.28,<1", "ruff>=0.11,<1", "build>=1.2,<2",
