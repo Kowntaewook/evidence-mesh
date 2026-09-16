@@ -11,13 +11,50 @@
     "build": "tsc && node scripts/copy-assets.cjs",
     "start": "npm run build && electron .",
     "package": "npm run build && electron-packager . EvidenceMesh --out=release --overwrite --asar --ignore='^/(src|scripts|release|tests|test-results|tsconfig.json)'",
-    "test:e2e": "npm run build && node tests/smoke.cjs"
+    "test:e2e": "npm run build && node tests/smoke.cjs",
+    "package:win": "npm run build && electron-builder --win nsis --x64"
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",
     "@types/node": "^24.0.0",
     "electron": "44.4.1",
+    "electron-builder": "^26.15.3",
     "playwright": "^1.56.0",
     "typescript": "7.0.2"
+  },
+  "build": {
+    "appId": "io.github.kowntaewook.evidencemesh",
+    "productName": "EvidenceMesh",
+    "directories": {
+      "output": "release-installer"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../dist/evidencemesh-backend",
+        "to": "backend"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "executableName": "EvidenceMesh"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "EvidenceMesh"
+    }
   }
 }

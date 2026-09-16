@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, session } from 'electron';
 import { readFile } from 'node:fs/promises';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -34,6 +35,59 @@ function trusted(event: Electron.IpcMainInvokeEvent): void {
   if (event.senderFrame?.url !== entry || event.senderFrame !== event.sender.mainFrame) throw new Error('Untrusted renderer');
 }
 
+
+let backendProcess: ChildProcess | null = null;
+
+function startPackagedBackend(): void {
+  if (!app.isPackaged) return;
+
+  const backendPath = path.join(
+    process.resourcesPath,
+    'backend',
+    'evidencemesh-backend.exe',
+  );
+
+  backendProcess = spawn(backendPath, [], {
+    windowsHide: true,
+    stdio: ['ignore', 'ignore', 'pipe'],
+    env: {
+      ...process.env,
+      EVIDENCEMESH_DB: path.join(
+        app.getPath('userData'),
+        'evidencemesh.sqlite3',
+      ),
+    },
+  });
+
+  backendProcess.stderr?.on('data', (data) => {
+    console.error(`[EvidenceMesh backend] ${data.toString()}`);
+  });
+
+  backendProcess.on('error', (error) => {
+    console.error('Failed to start EvidenceMesh backend:', error);
+  });
+}
+
+async function waitForBackend(): Promise<void> {
+  const healthUrl = new URL('/health', endpoint);
+
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    try {
+      const response = await fetch(healthUrl, {
+        signal: AbortSignal.timeout(1000),
+      });
+
+      if (response.ok) return;
+    } catch {
+      // Backend may still be starting.
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error('EvidenceMesh backend did not become ready');
+}
+
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({ width: 1440, height: 900, minWidth: 1120, minHeight: 720,
     backgroundColor: '#080808', title: 'EvidenceMesh',
@@ -45,7 +99,12 @@ function createWindow(): BrowserWindow {
   return window;
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  if (app.isPackaged) {
+    startPackagedBackend();
+    await waitForBackend();
+  }
+
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   ipcMain.handle('api:request', (event, method: string, route: string, body?: unknown) => {
     trusted(event);
@@ -97,5 +156,11 @@ app.whenReady().then(() => {
   createWindow();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 }).catch((error: unknown) => { console.error(error); app.exit(1); });
+
+app.on('before-quit', () => {
+  if (backendProcess && !backendProcess.killed) {
+    backendProcess.kill();
+  }
+});
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
