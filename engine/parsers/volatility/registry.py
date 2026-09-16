@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
+from importlib import import_module
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as package_version
 from pathlib import Path
@@ -64,6 +65,48 @@ def filename_plugin(stem: str) -> str:
     return canonical_plugin(f"windows.{stem}")
 
 
+def _embedded_discovery(command: list[str]) -> dict | None:
+    """Discover bundled plugins without spawning the frozen CLI help path.
+
+    Volatility's help command imports the complete plugin tree and can hang for
+    minutes on a fresh Windows install while the bundled executable is being
+    scanned. The application only needs the canonical plugin names here; the
+    real CLI remains the execution path for memory analysis below.
+    """
+    if not getattr(sys, "frozen", False) or len(command) < 2 or command[1] != "--volatility":
+        return None
+
+    plugins = []
+    for spec in SPECS:
+        try:
+            import_module("volatility3.plugins." + spec.name)
+        except ImportError:
+            names = []
+        else:
+            names = [f"{spec.name}.{spec.class_name}"]
+        plugins.append(
+            {
+                "plugin": spec.name,
+                "supported": True,
+                "available": bool(names),
+                "installed_names": names,
+                "status": "SUCCESS" if names else "UNAVAILABLE",
+            }
+        )
+    try:
+        found_version = package_version("volatility3")
+    except PackageNotFoundError:
+        found_version = None
+    return {
+        "executable": command[0],
+        "version": found_version,
+        "plugins": plugins,
+        "error": None,
+        "stderr": "",
+        "command": command,
+    }
+
+
 def discover_plugins(
     executable: str | None = None, timeout: float = 120, command: list[str] | None = None
 ) -> dict:
@@ -75,6 +118,9 @@ def discover_plugins(
         command = [*command, "--help"]
     else:
         command = [binary, "--help"] if binary else []
+    embedded = _embedded_discovery(command)
+    if embedded is not None:
+        return embedded
     error, stderr, output = None, "", ""
     if not binary:
         error = "Volatility executable not installed; export parsing remains available"
